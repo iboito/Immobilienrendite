@@ -7,11 +7,9 @@ import immo_core
 import pdf_generator
 
 # Seite konfigurieren
-st.set_page_config(
-    page_title="Immobilien-Analyse",
-    page_icon="🏠",
-    layout="wide"
-)
+st.set_page_config(page_title="Immobilien-Analyse",
+                   page_icon="🏠",
+                   layout="wide")
 
 # Titel und Icon
 try:
@@ -78,7 +76,9 @@ if show_darlehen2:
 else:
     tilgung2 = tilg_eur2 = laufzeit2 = None
 
-# Laufende Posten & Steuer
+st.markdown("---")
+
+# 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
 kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)",           min_value=0, max_value=10_000, value=1_000, step=50)
 umlagefaehige_monat    = st.number_input("Umlagefähige Kosten (€ mtl.)",  min_value=0, max_value=1_000, value=150, step=10)
@@ -90,7 +90,7 @@ verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)",
 
 st.markdown("---")
 
-# Alle Eingaben sammeln
+# Eingaben sammeln
 inputs = {
     'wohnort': wohnort,
     'baujahr_kategorie': baujahr,
@@ -132,31 +132,30 @@ inputs = {
 # Berechnung
 results = immo_core.calculate_analytics(inputs)
 
-# Sofortige Anzeige von AfA und Darlehensübersicht
 if 'error' in results:
     st.error(results['error'])
 else:
-    # AfA
+    # AfA sofort anzeigen
     afa_row = next((r for r in results['display_table'] if r['kennzahl'].startswith(" - AfA p.a.")), None)
     if afa_row:
         st.markdown(f"**AfA p.a.:** {afa_row['val1']} % → {afa_row['val2']:,.2f} €")
 
     # Darlehen I Übersicht
+    d1 = results['d1_details']
     st.markdown("**Darlehen I Übersicht:**")
-    for r in results['display_table']:
-        if r['kennzahl'].strip().startswith("• Laufzeit Darlehen I"):
-            st.markdown(f"- Laufzeit: **{r['val2']}** Jahre")
-        if r['kennzahl'].strip().startswith("• Effektiver Tilgungssatz I"):
-            st.markdown(f"- Tilgungssatz: **{r['val2']}** %")
+    if tilgung1_modus != "Laufzeit (Jahre)":
+        st.markdown(f"- Laufzeit: **{d1['laufzeit_jahre']:.1f}** Jahre")
+    else:
+        st.markdown(f"- Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f}** %")
 
     # Darlehen II Übersicht
-    if any(r['kennzahl'].strip().startswith("• Laufzeit Darlehen II") for r in results['display_table']):
+    if show_darlehen2:
+        d2 = results['d2_details']
         st.markdown("**Darlehen II Übersicht:**")
-        for r in results['display_table']:
-            if r['kennzahl'].strip().startswith("• Laufzeit Darlehen II"):
-                st.markdown(f"- Laufzeit: **{r['val2']}** Jahre")
-            if r['kennzahl'].strip().startswith("• Effektiver Tilgungssatz II"):
-                st.markdown(f"- Tilgungssatz: **{r['val2']}** %")
+        if tilgung2_modus != "Laufzeit (Jahre)":
+            st.markdown(f"- Laufzeit: **{d2['laufzeit_jahre']:.1f}** Jahre")
+        else:
+            st.markdown(f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f}** %")
 
     st.markdown("---")
     # Ergebnistabelle
