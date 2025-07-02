@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Titel und optionales Icon
+# Titel und Icon
 try:
     icon_path = Path(__file__).with_name("10751558.png")
     st.image(Image.open(icon_path).resize((64, 64)))
@@ -77,6 +77,66 @@ if show_darlehen2:
 else:
     tilgung2 = tilg_eur2 = laufzeit2 = None
 
+# Berechnung sofort live
+inputs = {
+    'wohnort': wohnort,
+    'baujahr_kategorie': baujahr,
+    'wohnflaeche_qm': wohnflaeche_qm,
+    'stockwerk': stockwerk,
+    'zimmeranzahl': zimmeranzahl,
+    'energieeffizienz': energieeffizienz,
+    'oepnv_anbindung': oepnv_anbindung,
+    'besonderheiten': besonderheiten,
+    'kaufpreis': kaufpreis,
+    'garage_stellplatz_kosten': garage_stellplatz,
+    'invest_bedarf': invest_bedarf,
+    'eigenkapital': eigenkapital,
+    'nebenkosten_prozente': {
+        'grunderwerbsteuer': grunderwerbsteuer,
+        'notar': notar,
+        'grundbuch': grundbuch,
+        'makler': makler
+    },
+    'nutzungsart': 'Vermietung',
+    'zins1_prozent': zins1,
+    'modus_d1': 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit',
+    'tilgung1_prozent': tilgung1,
+    'tilgung1_euro_mtl': tilg_eur1,
+    'laufzeit1_jahre': laufzeit1,
+    'darlehen2_summe': 0,
+    'zins2_prozent': zins2,
+    'modus_d2': 'tilgungssatz' if tilgung2_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung2_modus.startswith("Tilgungsbetrag") else 'laufzeit',
+    'tilgung2_prozent': tilgung2,
+    'tilgung2_euro_mtl': tilg_eur2,
+    'laufzeit2_jahre': laufzeit2,
+}
+
+results = immo_core.calculate_analytics(inputs)
+
+# AfA und Darlehensübersicht sofort anzeigen
+if not results.get('error'):
+    # AfA-Satz und Euro-Betrag im Finanzierungsteil
+    afa_row = next((r for r in results['display_table'] if r['kennzahl'].startswith(" - AfA p.a. (%):")), None)
+    if afa_row:
+        st.markdown(f"**AfA-Satz p.a.:** {afa_row['val1']} % → {afa_row['val2']:,.2f} €")
+
+    # Darlehen I Übersicht
+    st.markdown("> **Darlehen I:**")
+    for row in results['display_table']:
+        if row['kennzahl'].strip().startswith("• Laufzeit Darlehen I"):
+            st.markdown(f"> • Laufzeit: {row['val2']} Jahre")
+        if row['kennzahl'].strip().startswith("• Effektiver Tilgungssatz I"):
+            st.markdown(f"> • Tilgungssatz: {row['val2']} %")
+
+    # Darlehen II Übersicht
+    if any(r['kennzahl'].strip().startswith("• Laufzeit Darlehen II") for r in results['display_table']):
+        st.markdown("> **Darlehen II:**")
+        for row in results['display_table']:
+            if row['kennzahl'].strip().startswith("• Laufzeit Darlehen II"):
+                st.markdown(f"> • Laufzeit: {row['val2']} Jahre")
+            if row['kennzahl'].strip().startswith("• Effektiver Tilgungssatz II"):
+                st.markdown(f"> • Tilgungssatz: {row['val2']} %")
+
 st.markdown("---")
 
 # 3. Laufende Posten & Steuer
@@ -86,80 +146,15 @@ umlagefaehige_monat    = st.number_input("Umlagefähige Kosten mtl. (€)",  min
 nicht_umlagefaehige_pa = st.number_input("Nicht uml.agef. Kosten p.a. (€)", min_value=0, max_value=10_000, value=960, step=10)
 steuersatz             = st.number_input("Persönl. Steuersatz (%)",        min_value=0.0, max_value=100.0, value=42.0, step=0.5)
 
-st.subheader("Persönliche Finanzsituation")
-verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
-
 st.markdown("---")
 
-# Berechnung auslösen
-if st.button("Analyse berechnen"):
-    inputs = {
-        'wohnort': wohnort,
-        'baujahr_kategorie': baujahr,
-        'wohnflaeche_qm': wohnflaeche_qm,
-        'stockwerk': stockwerk,
-        'zimmeranzahl': zimmeranzahl,
-        'energieeffizienz': energieeffizienz,
-        'oepnv_anbindung': oepnv_anbindung,
-        'besonderheiten': besonderheiten,
-        'kaufpreis': kaufpreis,
-        'garage_stellplatz_kosten': garage_stellplatz,
-        'invest_bedarf': invest_bedarf,
-        'eigenkapital': eigenkapital,
-        'nebenkosten_prozente': {
-            'grunderwerbsteuer': grunderwerbsteuer,
-            'notar': notar,
-            'grundbuch': grundbuch,
-            'makler': makler
-        },
-        'nutzungsart': 'Vermietung',
-        'zins1_prozent': zins1,
-        'modus_d1': 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit',
-        'tilgung1_prozent': tilgung1,
-        'tilgung1_euro_mtl': tilg_eur1,
-        'laufzeit1_jahre': laufzeit1,
-        'darlehen2_summe': 0,
-        'zins2_prozent': zins2,
-        'modus_d2': 'tilgungssatz' if tilgung2_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung2_modus.startswith("Tilgungsbetrag") else 'laufzeit',
-        'tilgung2_prozent': tilgung2,
-        'tilgung2_euro_mtl': tilg_eur2,
-        'laufzeit2_jahre': laufzeit2,
-        'kaltmiete_monatlich': kaltmiete_monatlich,
-        'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
-        'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
-        'steuersatz': steuersatz,
-        'verfuegbares_einkommen_mtl': verfuegbares_einkommen
-    }
-
-    results = immo_core.calculate_analytics(inputs)
-    if 'error' in results:
-        st.error(results['error'])
-        st.stop()
-
-    # Ergebnistabelle
-    st.subheader("Ergebnisse")
-    df = {
-        row['kennzahl']: [row['val1'], row['val2']]
-        for row in results['display_table']
-    }
+# 4. Live-Ergebnistabelle
+st.subheader("Ergebnisse")
+if 'error' in results:
+    st.error(results['error'])
+else:
+    df = {row['kennzahl']: [row['val1'], row['val2']] for row in results['display_table']}
     st.dataframe(df, use_container_width=True)
-
-    # Darlehensübersicht (kursiv unter der Tabelle)
-    st.markdown("_Darlehensübersicht:_")
-    # Darlehen I Übersicht
-    # Suche in display_table
-    for row in results['display_table']:
-        if row['kennzahl'].startswith(" • Laufzeit Darlehen I"):
-            st.markdown(f"- _Laufzeit Darlehen I (Jahre):_ **{row['val2']}**")
-        if row['kennzahl'].startswith(" • Effektiver Tilgungssatz I"):
-            st.markdown(f"- _Effektiver Tilgungssatz I (%):_ **{row['val2']}**")
-    # Darlehen II Übersicht, falls vorhanden
-    if any(r['kennzahl'].startswith(" • Laufzeit Darlehen II") for r in results['display_table']):
-        for row in results['display_table']:
-            if row['kennzahl'].startswith(" • Laufzeit Darlehen II"):
-                st.markdown(f"- _Laufzeit Darlehen II (Jahre):_ **{row['val2']}**")
-            if row['kennzahl'].startswith(" • Effektiver Tilgungssatz II"):
-                st.markdown(f"- _Effektiver Tilgungssatz II (%):_ **{row['val2']}**")
 
     # KPIs
     st.subheader("Kennzahlen (KPIs)")
