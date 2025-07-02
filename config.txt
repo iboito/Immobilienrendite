@@ -1,0 +1,6 @@
+# config.txt
+[DefaultValues]
+grunderwerbsteuer_prozent = 3.5
+notar_prozent = 1.5
+grundbuch_prozent = 0.5
+makler_prozent = 3.57
