@@ -78,7 +78,8 @@ if show_darlehen2:
 else:
     tilgung2 = tilg_eur2 = laufzeit2 = None
 
-# Laufende Posten & Steuer vorbereiten (wird danach im Input ergänzt)
+# Laufende Posten & Steuer
+st.header("3. Laufende Posten & Steuer")
 kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)",           min_value=0, max_value=10_000, value=1_000, step=50)
 umlagefaehige_monat    = st.number_input("Umlagefähige Kosten (€ mtl.)",  min_value=0, max_value=1_000, value=150, step=10)
 nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10_000, value=960, step=10)
@@ -87,7 +88,9 @@ steuersatz             = st.number_input("Persönl. Steuersatz (%)",        min_
 st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 
-# Eingaben sammeln
+st.markdown("---")
+
+# Alle Eingaben sammeln
 inputs = {
     'wohnort': wohnort,
     'baujahr_kategorie': baujahr,
@@ -129,43 +132,46 @@ inputs = {
 # Berechnung
 results = immo_core.calculate_analytics(inputs)
 
-# Ergebnisse anzeigen
+# Sofortige Anzeige von AfA und Darlehensübersicht
 if 'error' in results:
     st.error(results['error'])
 else:
-    st.markdown("---")
-    # AfA live im Finanzierungsteil
-    afa_row = next((r for r in results['display_table'] if r['kennzahl'].startswith(" - AfA p.a. (%):")), None)
+    # AfA
+    afa_row = next((r for r in results['display_table'] if r['kennzahl'].startswith(" - AfA p.a.")), None)
     if afa_row:
         st.markdown(f"**AfA p.a.:** {afa_row['val1']} % → {afa_row['val2']:,.2f} €")
 
-    # Darlehensübersicht live
-    st.markdown("> **Darlehen I Übersicht:**")
+    # Darlehen I Übersicht
+    st.markdown("**Darlehen I Übersicht:**")
     for r in results['display_table']:
-        if "Laufzeit Darlehen I" in r['kennzahl']:
-            st.markdown(f"> • Laufzeit: **{r['val2']}** Jahre")
-        if "Effektiver Tilgungssatz I" in r['kennzahl']:
-            st.markdown(f"> • Tilgungssatz: **{r['val2']}** %")
+        if r['kennzahl'].strip().startswith("• Laufzeit Darlehen I"):
+            st.markdown(f"- Laufzeit: **{r['val2']}** Jahre")
+        if r['kennzahl'].strip().startswith("• Effektiver Tilgungssatz I"):
+            st.markdown(f"- Tilgungssatz: **{r['val2']}** %")
 
-    if any("Laufzeit Darlehen II" in r['kennzahl'] for r in results['display_table']):
-        st.markdown("> **Darlehen II Übersicht:**")
+    # Darlehen II Übersicht
+    if any(r['kennzahl'].strip().startswith("• Laufzeit Darlehen II") for r in results['display_table']):
+        st.markdown("**Darlehen II Übersicht:**")
         for r in results['display_table']:
-            if "Laufzeit Darlehen II" in r['kennzahl']:
-                st.markdown(f"> • Laufzeit: **{r['val2']}** Jahre")
-            if "Effektiver Tilgungssatz II" in r['kennzahl']:
-                st.markdown(f"> • Tilgungssatz: **{r['val2']}** %")
+            if r['kennzahl'].strip().startswith("• Laufzeit Darlehen II"):
+                st.markdown(f"- Laufzeit: **{r['val2']}** Jahre")
+            if r['kennzahl'].strip().startswith("• Effektiver Tilgungssatz II"):
+                st.markdown(f"- Tilgungssatz: **{r['val2']}** %")
 
     st.markdown("---")
+    # Ergebnistabelle
     st.subheader("Ergebnisse")
     df = {r['kennzahl']: [r['val1'], r['val2']] for r in results['display_table']}
     st.dataframe(df, use_container_width=True)
 
+    # KPIs
     st.subheader("Kennzahlen (KPIs)")
     cols = st.columns(len(results['kpi_table']))
     for col, kpi in zip(cols, results['kpi_table']):
         with col:
             st.metric(kpi['Kennzahl'], kpi['Wert'])
 
+    # Grafiken
     st.subheader("Grafiken")
     pie_col, bar_col = st.columns(2)
     with pie_col:
@@ -175,6 +181,7 @@ else:
     with bar_col:
         st.pyplot(immo_core.plt_bar(results['bar_data'], ret_fig=True))
 
+    # PDF-Export
     if st.button("📄 PDF-Bericht erstellen"):
         from tempfile import NamedTemporaryFile
         with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
