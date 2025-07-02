@@ -20,7 +20,6 @@ try:
 except FileNotFoundError:
     pass
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
-
 st.markdown("---")
 
 # 1. Objekt & Investition
@@ -144,6 +143,23 @@ if st.button("Analyse berechnen"):
         for row in results['display_table']
     }
     st.dataframe(df, use_container_width=True)
+
+    # Darlehensübersicht (kursiv unter der Tabelle)
+    st.markdown("_Darlehensübersicht:_")
+    # Darlehen I Übersicht
+    # Suche in display_table
+    for row in results['display_table']:
+        if row['kennzahl'].startswith(" • Laufzeit Darlehen I"):
+            st.markdown(f"- _Laufzeit Darlehen I (Jahre):_ **{row['val2']}**")
+        if row['kennzahl'].startswith(" • Effektiver Tilgungssatz I"):
+            st.markdown(f"- _Effektiver Tilgungssatz I (%):_ **{row['val2']}**")
+    # Darlehen II Übersicht, falls vorhanden
+    if any(r['kennzahl'].startswith(" • Laufzeit Darlehen II") for r in results['display_table']):
+        for row in results['display_table']:
+            if row['kennzahl'].startswith(" • Laufzeit Darlehen II"):
+                st.markdown(f"- _Laufzeit Darlehen II (Jahre):_ **{row['val2']}**")
+            if row['kennzahl'].startswith(" • Effektiver Tilgungssatz II"):
+                st.markdown(f"- _Effektiver Tilgungssatz II (%):_ **{row['val2']}**")
 
     # KPIs
     st.subheader("Kennzahlen (KPIs)")
