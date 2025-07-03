@@ -244,19 +244,19 @@ if st.button("Analyse berechnen"):
                     st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
         st.markdown("---")
 
-        # --- Finanzierungsstruktur-Grafik (kompakt) ---
+        # --- Finanzierungsstruktur-Grafik (sehr kompakt) ---
         ek = eigenkapital
         fk = gesamtfinanzierung - eigenkapital
         labels = ['Eigenkapital', 'Darlehen']
         sizes = [ek, fk]
         colors = ['#4e79a7', '#f28e2b']
-        fig, ax = plt.subplots(figsize=(3.5, 3.5))  # Kompakte Größe [3.5 Zoll x 3.5 Zoll]
+        fig, ax = plt.subplots(figsize=(1.75, 1.75))  # Sehr kompakte Größe
         wedges, texts, autotexts = ax.pie(
             sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-            startangle=90, counterclock=False, textprops={'fontsize': 11}
+            startangle=90, counterclock=False, textprops={'fontsize': 10}
         )
         ax.axis('equal')
-        ax.set_title('Finanzierungsstruktur', fontsize=13)
+        ax.set_title('Finanzierungsstruktur', fontsize=11)
         st.pyplot(fig)
         st.markdown("---")
 
