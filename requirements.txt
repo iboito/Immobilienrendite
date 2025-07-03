@@ -2,5 +2,4 @@ streamlit
 pillow
 matplotlib
 reportlab
-fpdf
 fpdf2
