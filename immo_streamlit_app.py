@@ -42,11 +42,13 @@ notar                 = st.number_input("Notar %", min_value=0.0, max_value=10.0
 grundbuch             = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
 makler                = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
 
-# --- Die Checkbox steht jetzt VOR den Feldern! ---
-show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
+# Darlehenssumme automatisch berechnen
+nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
+darlehen1_summe = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe - eigenkapital
 
-# Feste Labels für das erste Darlehen – nie ein "I"
 st.subheader("Darlehen")
+st.info(f"**Automatisch berechnete Darlehenssumme:** {darlehen1_summe:,.2f} €")
+
 zins1 = st.number_input("Zins (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05)
 tilgung1_modus = st.selectbox("Tilgungsmodus", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
 if tilgung1_modus.startswith("Tilgungssatz"):
@@ -58,6 +60,34 @@ elif tilgung1_modus.startswith("Tilgungsbetrag"):
 else:
     laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1)
     tilgung1, tilg_eur1 = None, None
+
+# LIVE Darlehensdetails wie in der GUI
+from immo_core import berechne_darlehen_details
+modus_d1 = 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit'
+d1 = berechne_darlehen_details(
+    darlehen1_summe, zins1,
+    tilgung_p=tilgung1,
+    tilgung_euro_mtl=tilg_eur1,
+    laufzeit_jahre=laufzeit1,
+    modus=modus_d1
+)
+st.markdown(
+    """
+    **Darlehen Übersicht:**
+    - Darlehenssumme: **{summe:,.2f} €**
+    - Rate: **{rate:,.2f} €**
+    - Laufzeit: **{laufzeit:.1f} Jahre**
+    - Tilgungssatz: **{tilgung:.2f} %**
+    """.format(
+        summe=darlehen1_summe,
+        rate=d1['monatsrate'],
+        laufzeit=d1['laufzeit_jahre'],
+        tilgung=d1['tilgung_p_ergebnis']
+    )
+)
+
+# Checkbox für weiteres Darlehen nach dem ersten Darlehen
+show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
 
 if show_darlehen2:
     st.subheader("Darlehen II")
@@ -72,30 +102,7 @@ if show_darlehen2:
     else:
         laufzeit2 = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
         tilgung2, tilg_eur2 = None, None
-else:
-    zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
 
-# LIVE Darlehensdetails wie in der GUI
-from immo_core import berechne_darlehen_details
-nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
-darlehen1_summe = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe - eigenkapital
-modus_d1 = 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit'
-d1 = berechne_darlehen_details(
-    darlehen1_summe, zins1,
-    tilgung_p=tilgung1,
-    tilgung_euro_mtl=tilg_eur1,
-    laufzeit_jahre=laufzeit1,
-    modus=modus_d1
-)
-st.markdown("**Darlehen Übersicht:**")
-st.markdown(
-    f"- Darlehenssumme: **{darlehen1_summe:,.2f} €**  \n"
-    f"- Rate: **{d1['monatsrate']:,.2f} €**  \n"
-    f"- Laufzeit: **{d1['laufzeit_jahre']:.1f} Jahre**  \n"
-    f"- Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**"
-)
-
-if show_darlehen2:
     d2 = berechne_darlehen_details(
         0, zins2,
         tilgung_p=tilgung2,
@@ -105,12 +112,20 @@ if show_darlehen2:
                else 'tilgung_euro' if tilgung2_modus and tilgung2_modus.startswith("Tilgungsbetrag")
                else 'laufzeit')
     )
-    st.markdown("**Darlehen II Übersicht:**")
     st.markdown(
-        f"- Rate: **{d2['monatsrate']:,.2f} €**  \n"
-        f"- Laufzeit: **{d2['laufzeit_jahre']:.1f} Jahre**  \n"
-        f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**"
+        """
+        **Darlehen II Übersicht:**
+        - Rate: **{rate:,.2f} €**
+        - Laufzeit: **{laufzeit:.1f} Jahre**
+        - Tilgungssatz: **{tilgung:.2f} %**
+        """.format(
+            rate=d2['monatsrate'],
+            laufzeit=d2['laufzeit_jahre'],
+            tilgung=d2['tilgung_p_ergebnis']
+        )
     )
+else:
+    zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
 
 st.markdown("---")
 
