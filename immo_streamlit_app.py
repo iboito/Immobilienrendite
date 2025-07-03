@@ -43,7 +43,7 @@ def is_number(val):
     except:
         return False
 
-def create_pdf_report(results, inputs):
+def create_pdf_report(results, inputs, checklist_items):
     pdf = FPDF()
     pdf.add_page()
     pdf.add_font("DejaVuSans", "", "DejaVuSans.ttf")
@@ -359,7 +359,7 @@ st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 st.markdown("---")
 
-# Interaktive Checkliste-Status speichern (nur EINMAL pro Key!)
+# EINZIGER Checklistenblock! (NUR HIER!)
 if 'checklist_status' not in st.session_state:
     st.session_state['checklist_status'] = {}
 for item in checklist_items:
@@ -492,15 +492,17 @@ if results:
         st.pyplot(fig)
     st.markdown("---")
 
-    # 4. Checkliste (NUR EINMAL pro Key!)
+    # 4. Checkliste-Status anzeigen (NUR Status, KEINE Checkboxen mehr!)
     st.header("4. Checkliste: Wichtige Dokumente für den Immobilienkauf")
     for item in checklist_items:
-        st.checkbox(item, key=f"check_{item}", value=st.session_state['checklist_status'].get(item, False))
+        checked = st.session_state['checklist_status'][item]
+        box = "☑" if checked else "☐"
+        st.write(f"{box} {item}")
 
     st.markdown("---")
     st.subheader("Bericht als PDF exportieren")
     if st.button("PDF-Bericht erstellen"):
-        pdf_bytes = create_pdf_report(results, inputs)
+        pdf_bytes = create_pdf_report(results, inputs, checklist_items)
         st.session_state['pdf_bytes'] = pdf_bytes
         st.success("PDF wurde erstellt. Klicke unten zum Herunterladen:")
     if st.session_state['pdf_bytes']:
