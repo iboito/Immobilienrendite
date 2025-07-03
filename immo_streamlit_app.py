@@ -3,6 +3,7 @@ from pathlib import Path
 from PIL import Image
 import immo_core
 import pdf_generator
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
@@ -179,8 +180,34 @@ results = immo_core.calculate_analytics(inputs)
 if 'error' in results:
     st.error(results['error'])
 else:
-    df = {r['kennzahl']: [r['val1'], r['val2']] for r in results['display_table']}
-    st.dataframe(df, use_container_width=True)
+    # Cashflow- und Steuerrechnung nebeneinander darstellen
+    cashflow_keys = [
+        "Einnahmen p.a. (Kaltmiete)",
+        "Nicht umlagef. Kosten p.a.",
+        "Rückzahlung Darlehen p.a.",
+        "= Cashflow vor Steuern p.a."
+    ]
+    steuer_keys = [
+        "Zinsen p.a.",
+        "AfA (Abschreibung) p.a.",
+        "Werbungskosten p.a.",
+        "= zu versteuernder Verlust p.a.",
+        "Steuerersparnis p.a."
+    ]
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Cashflow-Rechnung (Ihr Konto)**")
+        for k in cashflow_keys:
+            val = next((r['val2'] for r in results['display_table'] if k in r['kennzahl']), None)
+            if val is not None:
+                st.write(f"{k}: **{val:,.2f} €**")
+    with col2:
+        st.markdown("**Steuer-Rechnung (Finanzamt)**")
+        for k in steuer_keys:
+            val = next((r['val2'] for r in results['display_table'] if k in r['kennzahl']), None)
+            if val is not None:
+                st.write(f"{k}: **{val:,.2f} €**")
 
     st.subheader("Kennzahlen (KPIs)")
     cols = st.columns(len(results['kpi_table']))
