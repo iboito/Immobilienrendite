@@ -42,20 +42,15 @@ notar                 = st.number_input("Notar %", min_value=0.0, max_value=10.0
 grundbuch             = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
 makler                = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
 
-# Checkbox für Darlehen II kommt jetzt VOR die Felder
+# Checkbox vor die Felder!
 show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
 
-# Dynamische Labels für Darlehen I
-darlehen1_label = "Darlehen" if not show_darlehen2 else "Darlehen I"
-zins1_label = "Zins (%)" if not show_darlehen2 else "Zins I (%)"
-tilgung1_modus_label = "Tilgungsmodus" if not show_darlehen2 else "Tilgungsmodus I"
-tilgung1_label = "Tilgung (%)" if not show_darlehen2 else "Tilgung I (%)"
-
-st.subheader(darlehen1_label)
-zins1 = st.number_input(zins1_label, min_value=0.0, max_value=10.0, value=3.5, step=0.05)
-tilgung1_modus = st.selectbox(tilgung1_modus_label, ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
+# Feste Labels für das erste Darlehen
+st.subheader("Darlehen")
+zins1 = st.number_input("Zins (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05)
+tilgung1_modus = st.selectbox("Tilgungsmodus", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
 if tilgung1_modus.startswith("Tilgungssatz"):
-    tilgung1 = st.number_input(tilgung1_label, min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+    tilgung1 = st.number_input("Tilgung (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
     tilg_eur1, laufzeit1 = None, None
 elif tilgung1_modus.startswith("Tilgungsbetrag"):
     tilg_eur1 = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
@@ -92,7 +87,7 @@ d1 = berechne_darlehen_details(
     laufzeit_jahre=laufzeit1,
     modus=modus_d1
 )
-st.markdown(f"**{darlehen1_label} Übersicht:**")
+st.markdown("**Darlehen Übersicht:**")
 st.markdown(
     f"- Darlehenssumme: **{darlehen1_summe:,.2f} €**  \n"
     f"- Rate: **{d1['monatsrate']:,.2f} €**  \n"
