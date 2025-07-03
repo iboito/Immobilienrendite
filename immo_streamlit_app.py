@@ -12,7 +12,6 @@ st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wi
 def create_pdf_report(results, inputs):
     pdf = FPDF()
     pdf.add_page()
-    # Registriere Regular und Bold unter demselben Familiennamen!
     pdf.add_font("DejaVuSans", "", "DejaVuSans.ttf")
     pdf.add_font("DejaVuSans", "B", "DejaVuSans-Bold.ttf")
     pdf.set_font("DejaVuSans", size=14)
@@ -47,7 +46,7 @@ def create_pdf_report(results, inputs):
         checklist.append("Bei vermieteter Wohnung: Mietvertrag")
     for item in checklist:
         pdf.cell(0, 8, f"- {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    return pdf.output(dest="S").encode("latin-1", "replace")
+    return pdf.output(dest="S")
 
 # Titel und Icon
 try:
