@@ -18,20 +18,17 @@ def create_pdf_report(results, inputs):
     pdf.set_font("DejaVuSans", size=14)
     pdf.cell(0, 10, "Immobilien-Analyse Bericht", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
     pdf.set_font("DejaVuSans", size=11)
-    pdf.ln(4)
     pdf.cell(0, 10, f"Wohnort: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.cell(0, 10, f"Nutzungsart: {inputs.get('nutzungsart','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.ln(2)
     pdf.set_font("DejaVuSans", style="B", size=12)
     pdf.cell(0, 10, "Wichtigste Kennzahlen:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", size=11)
     if results and 'display_table' in results:
         for row in results['display_table']:
-            kennzahl = row.get('kennzahl', '')
-            val1 = row.get('val1', '')
-            val2 = row.get('val2', '')
+            kennzahl = str(row.get('kennzahl', ''))
+            val1 = str(row.get('val1', ''))
+            val2 = str(row.get('val2', ''))
             pdf.cell(0, 8, f"{kennzahl}: {val1} (Jahr 1), {val2} (Folgejahre)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.ln(2)
     pdf.set_font("DejaVuSans", style="B", size=12)
     pdf.cell(0, 10, "Checkliste:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", size=11)
@@ -50,7 +47,7 @@ def create_pdf_report(results, inputs):
         checklist.append("Bei vermieteter Wohnung: Mietvertrag")
     for item in checklist:
         pdf.cell(0, 8, f"- {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    return pdf.output(dest="S").encode("latin-1", "replace")
+    return pdf.output().encode("latin-1", "replace")
 
 # Titel und Icon
 try:
