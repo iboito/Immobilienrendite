@@ -7,30 +7,31 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
-# --- PDF-Funktion ---
+# --- PDF-Funktion mit Unicode-fähiger Schrift ---
 def create_pdf_report(results, inputs):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=14)
-    pdf.cell(0, 10, "Immobilien-Analyse Bericht", ln=True, align='C')
-    pdf.set_font("Arial", size=11)
+    pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
+    pdf.set_font("DejaVu", size=14)
+    pdf.cell(0, 10, "Immobilien-Analyse Bericht", new_x=pdf.l_margin, new_y=pdf.get_y() + 10, align='C')
+    pdf.set_font("DejaVu", size=11)
     pdf.ln(8)
-    pdf.cell(0, 10, f"Wohnort: {inputs.get('wohnort','')}", ln=True)
-    pdf.cell(0, 10, f"Nutzungsart: {inputs.get('nutzungsart','')}", ln=True)
+    pdf.cell(0, 10, f"Wohnort: {inputs.get('wohnort','')}", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
+    pdf.cell(0, 10, f"Nutzungsart: {inputs.get('nutzungsart','')}", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
     pdf.ln(4)
-    pdf.set_font("Arial", style='B', size=12)
-    pdf.cell(0, 10, "Wichtigste Kennzahlen:", ln=True)
-    pdf.set_font("Arial", size=11)
+    pdf.set_font("DejaVu", style='B', size=12)
+    pdf.cell(0, 10, "Wichtigste Kennzahlen:", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
+    pdf.set_font("DejaVu", size=11)
     if results and 'display_table' in results:
         for row in results['display_table']:
             kennzahl = row.get('kennzahl', '')
             val1 = row.get('val1', '')
             val2 = row.get('val2', '')
-            pdf.cell(0, 8, f"{kennzahl}: {val1} (Jahr 1), {val2} (Folgejahre)", ln=True)
+            pdf.cell(0, 8, f"{kennzahl}: {val1} (Jahr 1), {val2} (Folgejahre)", new_x=pdf.l_margin, new_y=pdf.get_y() + 8)
     pdf.ln(5)
-    pdf.set_font("Arial", style='B', size=12)
-    pdf.cell(0, 10, "Checkliste:", ln=True)
-    pdf.set_font("Arial", size=11)
+    pdf.set_font("DejaVu", style='B', size=12)
+    pdf.cell(0, 10, "Checkliste:", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
+    pdf.set_font("DejaVu", size=11)
     checklist = [
         "Grundbuchauszug",
         "Flurkarte",
@@ -45,8 +46,8 @@ def create_pdf_report(results, inputs):
     if inputs.get("nutzungsart") == "Vermietung":
         checklist.append("Bei vermieteter Wohnung: Mietvertrag")
     for item in checklist:
-        pdf.cell(0, 8, f"- {item}", ln=True)
-    return pdf.output(dest="S").encode("latin-1")
+        pdf.cell(0, 8, f"- {item}", new_x=pdf.l_margin, new_y=pdf.get_y() + 8)
+    return pdf.output(dest="S").encode("latin-1", "replace")
 
 # Titel und Icon
 try:
@@ -58,7 +59,6 @@ except Exception:
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
 
-# Nutzungsart-Auswahl
 nutzungsart = st.selectbox(
     "Nutzungsart wählen",
     ["Vermietung", "Eigennutzung"],
@@ -91,7 +91,6 @@ notar = st.number_input("Notar %", min_value=0.0, max_value=10.0, value=1.5, ste
 grundbuch = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
 makler = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
 
-# Darlehenssumme automatisch berechnen
 nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
 gesamtfinanzierung = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe
 darlehen1_summe = gesamtfinanzierung - eigenkapital
@@ -177,7 +176,6 @@ st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 st.markdown("---")
 
-# Inputs-Dictionary
 inputs = {
     'wohnort': wohnort,
     'baujahr_kategorie': baujahr,
@@ -218,7 +216,6 @@ inputs = {
     'verfuegbares_einkommen_mtl': verfuegbares_einkommen
 }
 
-# --- Persistente Ergebnisanzeige und Checkliste ---
 if 'results' not in st.session_state:
     st.session_state['results'] = None
 if 'pdf_bytes' not in st.session_state:
@@ -324,7 +321,6 @@ if results:
         st.checkbox(item, key=f"check_{item}")
 
     st.markdown("---")
-    # --- PDF Export ---
     st.subheader("Bericht als PDF exportieren")
     if st.button("PDF-Bericht erstellen"):
         pdf_bytes = create_pdf_report(results, inputs)
