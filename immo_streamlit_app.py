@@ -6,16 +6,13 @@ from PIL import Image
 import immo_core
 import pdf_generator
 
-# Seite konfigurieren
-st.set_page_config(page_title="Immobilien-Analyse",
-                   page_icon="🏠",
-                   layout="wide")
+st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
 # Titel und Icon
 try:
     icon_path = Path(__file__).with_name("10751558.png")
     st.image(Image.open(icon_path).resize((64, 64)))
-except FileNotFoundError:
+except Exception:
     pass
 
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
@@ -136,33 +133,35 @@ inputs = {
 # Berechnung
 results = immo_core.calculate_analytics(inputs)
 
-# Live-Anzeige AfA + Darlehensübersicht
 if 'error' in results:
     st.error(results['error'])
 else:
-    # AfA
-    afa_row = next((r for r in results['display_table'] if r['kennzahl'].startswith(" - AfA p.a.")), None)
-    if afa_row:
+    # AfA robust anzeigen
+    afa_row = next(
+        (r for r in results['display_table'] if "AfA" in r['kennzahl'] and "p.a." in r['kennzahl']),
+        None
+    )
+    if afa_row and afa_row['val1'] is not None and afa_row['val2'] is not None:
         st.markdown(f"**AfA p.a.:** {afa_row['val1']} % → {afa_row['val2']:,.2f} €")
 
-    # Darlehen I Übersicht
+    # Darlehen I Übersicht robust
+    d1_lz = next((r for r in results['display_table'] if "Laufzeit Darlehen I" in r['kennzahl']), None)
+    d1_tg = next((r for r in results['display_table'] if "Effektiver Tilgungssatz I" in r['kennzahl']), None)
     st.markdown("**Darlehen I Übersicht:**")
-    d1 = next((r for r in results['display_table'] if "Laufzeit Darlehen I" in r['kennzahl']), None)
-    t1 = next((r for r in results['display_table'] if "Effektiver Tilgungssatz I" in r['kennzahl']), None)
-    if d1:
-        st.markdown(f"- Laufzeit: **{d1['val2']:.1f}** Jahre")
-    if t1:
-        st.markdown(f"- Tilgungssatz: **{t1['val2']:.2f}** %")
+    if d1_lz and d1_lz['val2'] is not None:
+        st.markdown(f"- Laufzeit: **{d1_lz['val2']}** Jahre")
+    if d1_tg and d1_tg['val2'] is not None:
+        st.markdown(f"- Tilgungssatz: **{d1_tg['val2']}** %")
 
-    # Darlehen II Übersicht
+    # Darlehen II Übersicht robust
     if show_darlehen2:
+        d2_lz = next((r for r in results['display_table'] if "Laufzeit Darlehen II" in r['kennzahl']), None)
+        d2_tg = next((r for r in results['display_table'] if "Effektiver Tilgungssatz II" in r['kennzahl']), None)
         st.markdown("**Darlehen II Übersicht:**")
-        d2 = next((r for r in results['display_table'] if "Laufzeit Darlehen II" in r['kennzahl']), None)
-        t2 = next((r for r in results['display_table'] if "Effektiver Tilgungssatz II" in r['kennzahl']), None)
-        if d2:
-            st.markdown(f"- Laufzeit: **{d2['val2']:.1f}** Jahre")
-        if t2:
-            st.markdown(f"- Tilgungssatz: **{t2['val2']:.2f}** %")
+        if d2_lz and d2_lz['val2'] is not None:
+            st.markdown(f"- Laufzeit: **{d2_lz['val2']}** Jahre")
+        if d2_tg and d2_tg['val2'] is not None:
+            st.markdown(f"- Tilgungssatz: **{d2_tg['val2']}** %")
 
     st.markdown("---")
     # Ergebnistabelle
