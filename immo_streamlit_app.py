@@ -3,7 +3,6 @@ from pathlib import Path
 from PIL import Image
 import immo_core
 import pdf_generator
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
@@ -17,8 +16,8 @@ except Exception:
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
 
-# 1. Objekt
-st.header("1. Objekt")
+# 1. Objekt & Investition
+st.header("1. Objekt & Investition")
 wohnort            = st.text_input("Wohnort", "Nürnberg")
 baujahr            = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
 wohnflaeche_qm     = st.number_input("Wohnfläche (qm)", min_value=10, max_value=500, value=80)
@@ -62,6 +61,25 @@ else:
     laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1)
     tilgung1, tilg_eur1 = None, None
 
+# Checkbox für weiteres Darlehen nach dem ersten Darlehen
+show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
+
+if show_darlehen2:
+    st.subheader("Darlehen II")
+    zins2 = st.number_input("Zins II (%)", min_value=0.0, max_value=10.0, value=0.0, step=0.05)
+    tilgung2_modus = st.selectbox("Tilgungsmodus II", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"])
+    if tilgung2_modus.startswith("Tilgungssatz"):
+        tilgung2 = st.number_input("Tilgung II (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+        tilg_eur2, laufzeit2 = None, None
+    elif tilgung2_modus.startswith("Tilgungsbetrag"):
+        tilg_eur2 = st.number_input("Tilgung II (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+        tilgung2, laufzeit2 = None, None
+    else:
+        laufzeit2 = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
+        tilgung2, tilg_eur2 = None, None
+else:
+    zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
+
 # LIVE Darlehensdetails wie in der GUI
 from immo_core import berechne_darlehen_details
 modus_d1 = 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit'
@@ -82,23 +100,7 @@ st.markdown(
     """
 )
 
-# Checkbox für weiteres Darlehen nach dem ersten Darlehen
-show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
-
 if show_darlehen2:
-    st.subheader("Darlehen II")
-    zins2 = st.number_input("Zins II (%)", min_value=0.0, max_value=10.0, value=0.0, step=0.05)
-    tilgung2_modus = st.selectbox("Tilgungsmodus II", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"])
-    if tilgung2_modus.startswith("Tilgungssatz"):
-        tilgung2 = st.number_input("Tilgung II (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
-        tilg_eur2, laufzeit2 = None, None
-    elif tilgung2_modus.startswith("Tilgungsbetrag"):
-        tilg_eur2 = st.number_input("Tilgung II (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
-        tilgung2, laufzeit2 = None, None
-    else:
-        laufzeit2 = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
-        tilgung2, tilg_eur2 = None, None
-
     d2 = berechne_darlehen_details(
         0, zins2,
         tilgung_p=tilgung2,
@@ -116,8 +118,6 @@ if show_darlehen2:
         - Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**
         """
     )
-else:
-    zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
 
 st.markdown("---")
 
