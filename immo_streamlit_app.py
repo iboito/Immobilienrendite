@@ -186,7 +186,6 @@ if st.button("Analyse berechnen"):
     else:
         st.subheader("Ergebnisse")
 
-        # Unterschiedliche Kennzahlen je nach Nutzungsart
         if nutzungsart == "Vermietung":
             all_keys = [
                 "Einnahmen p.a. (Kaltmiete)",
@@ -206,7 +205,7 @@ if st.button("Analyse berechnen"):
                 "- Mtl. Kosten Immobilie",
                 "= Neues verfügbares Einkommen"
             ]
-        else:  # Eigennutzung
+        else:
             all_keys = [
                 "Laufende Kosten p.a.",
                 "Rückzahlung Darlehen p.a.",
@@ -218,46 +217,35 @@ if st.button("Analyse berechnen"):
                 "= Neues verfügbares Einkommen"
             ]
 
-        def get_val(key, col):
-            row = next((r for r in results['display_table'] if key in r['kennzahl']), None)
-            if row:
-                val = row['val1'] if col == 0 else row['val2']
-                if isinstance(val, (int, float)):
-                    return f"{val:,.2f} €"
-                return val
-            return ""
-
-        col1, col2 = st.columns(2)
-        with col1:
+        # Tabelle und Grafik nebeneinander
+        tcol, gcol = st.columns([2.5, 1])
+        with tcol:
             st.markdown("#### Jahr der Anschaffung (€)")
             for key in all_keys:
-                val = get_val(key, 0)
+                val = next((r['val1'] for r in results['display_table'] if key in r['kennzahl']), "")
                 if val != "":
                     style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
-                    st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
-        with col2:
+                    st.markdown(f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
             st.markdown("#### Laufende Jahre (€)")
             for key in all_keys:
-                val = get_val(key, 1)
+                val = next((r['val2'] for r in results['display_table'] if key in r['kennzahl']), "")
                 if val != "":
                     style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
-                    st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
-        st.markdown("---")
-
-        # --- Finanzierungsstruktur-Grafik (sehr kompakt) ---
-        ek = eigenkapital
-        fk = gesamtfinanzierung - eigenkapital
-        labels = ['Eigenkapital', 'Darlehen']
-        sizes = [ek, fk]
-        colors = ['#4e79a7', '#f28e2b']
-        fig, ax = plt.subplots(figsize=(1.75, 1.75))  # Sehr kompakte Größe
-        wedges, texts, autotexts = ax.pie(
-            sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-            startangle=90, counterclock=False, textprops={'fontsize': 10}
-        )
-        ax.axis('equal')
-        ax.set_title('Finanzierungsstruktur', fontsize=11)
-        st.pyplot(fig)
+                    st.markdown(f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
+        with gcol:
+            ek = eigenkapital
+            fk = gesamtfinanzierung - eigenkapital
+            labels = ['Eigenkapital', 'Darlehen']
+            sizes = [ek, fk]
+            colors = ['#4e79a7', '#f28e2b']
+            fig, ax = plt.subplots(figsize=(1, 1))  # Noch kompakter!
+            wedges, texts, autotexts = ax.pie(
+                sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+                startangle=90, counterclock=False, textprops={'fontsize': 8}
+            )
+            ax.axis('equal')
+            ax.set_title('Finanzierungsstruktur', fontsize=9)
+            st.pyplot(fig)
         st.markdown("---")
 
         # --- PDF Export ---
