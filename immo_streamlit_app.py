@@ -18,7 +18,7 @@ except Exception:
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
 
-# --- 1. Nutzungsart-Auswahl direkt nach dem Titel ---
+# Nutzungsart-Auswahl
 nutzungsart = st.selectbox(
     "Nutzungsart wählen",
     ["Vermietung", "Eigennutzung"],
@@ -26,7 +26,7 @@ nutzungsart = st.selectbox(
 )
 st.markdown("---")
 
-# 2. Objekt & Investition
+# 1. Objekt & Investition
 st.header("1. Objekt & Investition")
 wohnort = st.text_input("Wohnort", "Nürnberg")
 baujahr = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
@@ -38,7 +38,7 @@ oepnv_anbindung = st.selectbox("ÖPNV-Anbindung", ["Sehr gut","Gut","Okay"])
 besonderheiten = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 st.markdown("---")
 
-# 3. Finanzierung
+# 2. Finanzierung
 st.header("2. Finanzierung")
 kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, max_value=10_000_000, value=250_000, step=1_000)
 garage_stellplatz = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50_000, value=0, step=1_000)
@@ -120,7 +120,7 @@ if show_darlehen2:
 
 st.markdown("---")
 
-# 4. Laufende Posten & Steuer
+# 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
 if nutzungsart == "Vermietung":
     kaltmiete_monatlich = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
@@ -193,9 +193,9 @@ if st.button("Analyse berechnen"):
                 "Umlagefähige Kosten p.a.",
                 "Nicht umlagef. Kosten p.a.",
                 "Rückzahlung Darlehen p.a.",
-                "Gesamtkosten p.a.",
-                "= Cashflow vor Steuern p.a.",
                 "- Zinsen p.a.",
+                "Jährliche Gesamtkosten",
+                "= Cashflow vor Steuern p.a.",
                 "- AfA p.a.",
                 "- Absetzbare Kaufnebenkosten (Jahr 1)",
                 "= Steuerlicher Gewinn/Verlust p.a.",
@@ -203,16 +203,18 @@ if st.button("Analyse berechnen"):
                 "= Effektiver Cashflow n. St. p.a.",
                 "Gesamt-Cashflow (Ihre persönliche Si)",
                 "Ihr monatl. Einkommen (vorher)",
-                "+/- Mtl. Cashflow Immobilie",
+                "- Mtl. Kosten Immobilie",
                 "= Neues verfügbares Einkommen"
             ]
         else:  # Eigennutzung
             all_keys = [
                 "Laufende Kosten p.a.",
                 "Rückzahlung Darlehen p.a.",
-                "Gesamtkosten p.a.",
-                "= Effektiver Eigenaufwand p.a.",
+                "- Zinsen p.a.",
+                "Jährliche Gesamtkosten",
+                "Gesamt-Cashflow (Ihre persönliche Si)",
                 "Ihr monatl. Einkommen (vorher)",
+                "- Mtl. Kosten Immobilie",
                 "= Neues verfügbares Einkommen"
             ]
 
@@ -242,16 +244,19 @@ if st.button("Analyse berechnen"):
                     st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
         st.markdown("---")
 
-        # --- Finanzierungsstruktur-Grafik ---
+        # --- Finanzierungsstruktur-Grafik (kompakt) ---
         ek = eigenkapital
         fk = gesamtfinanzierung - eigenkapital
         labels = ['Eigenkapital', 'Darlehen']
         sizes = [ek, fk]
         colors = ['#4e79a7', '#f28e2b']
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, counterclock=False)
+        fig, ax = plt.subplots(figsize=(3.5, 3.5))  # Kompakte Größe [3.5 Zoll x 3.5 Zoll]
+        wedges, texts, autotexts = ax.pie(
+            sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+            startangle=90, counterclock=False, textprops={'fontsize': 11}
+        )
         ax.axis('equal')
-        ax.set_title('Finanzierungsstruktur: Eigenkapital vs. Darlehen')
+        ax.set_title('Finanzierungsstruktur', fontsize=13)
         st.pyplot(fig)
         st.markdown("---")
 
