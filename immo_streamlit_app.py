@@ -110,8 +110,6 @@ if show_darlehen2:
         f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**"
     )
 
-st.markdown("---")
-
 # 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
 kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
@@ -122,9 +120,9 @@ steuersatz             = st.number_input("Persönl. Steuersatz (%)", min_value=0
 st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 
-st.markdown("---")
+st.divider()  # Nur eine Trennlinie, keine Leerzeile!
 
-# Eingaben für Hauptberechnung
+st.subheader("Ergebnisse")
 inputs = {
     'wohnort': wohnort,
     'baujahr_kategorie': baujahr,
@@ -165,14 +163,11 @@ inputs = {
     'verfuegbares_einkommen_mtl': verfuegbares_einkommen
 }
 
-# Hauptberechnung
 results = immo_core.calculate_analytics(inputs)
 
 if 'error' in results:
     st.error(results['error'])
 else:
-    st.markdown("---")
-    st.subheader("Ergebnisse")
     df = {r['kennzahl']: [r['val1'], r['val2']] for r in results['display_table']}
     st.dataframe(df, use_container_width=True)
 
