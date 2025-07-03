@@ -46,23 +46,30 @@ def create_pdf_report(results, inputs):
     pdf.set_font("DejaVuSans", "B", 12)
     pdf.cell(0, 8, "1. Objekt- & Investmentübersicht", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "", 10)
-    pdf.cell(65, 7, "Kaufpreis:", border=0)
-    pdf.cell(40, 7, format_eur(inputs.get('kaufpreis',0)), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.cell(65, 7, "Garage/Stellplatz:", border=0)
-    pdf.cell(40, 7, format_eur(inputs.get('garage_stellplatz_kosten',0)), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.cell(65, 7, "Investitionsbedarf:", border=0)
-    pdf.cell(40, 7, format_eur(inputs.get('invest_bedarf',0)), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    immotable = [
+        ("Baujahr:", inputs.get('baujahr_kategorie', '')),
+        ("Wohnfläche (qm):", str(inputs.get('wohnflaeche_qm', ''))),
+        ("Zimmeranzahl:", str(inputs.get('zimmeranzahl', ''))),
+        ("Stockwerk:", str(inputs.get('stockwerk', ''))),
+        ("Energieeffizienz:", str(inputs.get('energieeffizienz', ''))),
+        ("ÖPNV-Anbindung:", str(inputs.get('oepnv_anbindung', ''))),
+        ("Besonderheiten:", str(inputs.get('besonderheiten', ''))),
+        ("Kaufpreis:", format_eur(inputs.get('kaufpreis', 0))),
+        ("Garage/Stellplatz:", format_eur(inputs.get('garage_stellplatz_kosten', 0))),
+        ("Investitionsbedarf:", format_eur(inputs.get('invest_bedarf', 0))),
+    ]
     nebenkosten_summe = (inputs.get('kaufpreis',0) + inputs.get('garage_stellplatz_kosten',0)) * sum(inputs.get('nebenkosten_prozente',{}).values())/100
-    pdf.cell(65, 7, "Kaufnebenkosten:", border=0)
-    pdf.cell(40, 7, format_eur(nebenkosten_summe), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    immotable.append(("Kaufnebenkosten:", format_eur(nebenkosten_summe)))
     gesamtinvest = inputs.get('kaufpreis',0)+inputs.get('garage_stellplatz_kosten',0)+inputs.get('invest_bedarf',0)+nebenkosten_summe
-    pdf.cell(65, 7, "Gesamtinvestition:", border=0)
-    pdf.cell(40, 7, format_eur(gesamtinvest), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    immotable.append(("Gesamtinvestition:", format_eur(gesamtinvest)))
+    for k, v in immotable:
+        pdf.cell(65, 7, k, border=0)
+        pdf.cell(40, 7, v, border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
-    # 2. Finanzierungsstruktur
+    # 2. Finanzierungsstruktur & Darlehensdetails
     pdf.set_font("DejaVuSans", "B", 12)
-    pdf.cell(0, 8, "2. Finanzierungsstruktur", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 8, "2. Finanzierungsstruktur & Darlehensdetails", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "", 10)
     ek = inputs.get('eigenkapital',0)
     fk = gesamtinvest - ek
@@ -70,9 +77,49 @@ def create_pdf_report(results, inputs):
     pdf.cell(40, 7, format_eur(ek), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.cell(65, 7, "Fremdkapital (Darlehen):", border=0)
     pdf.cell(40, 7, format_eur(fk), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    # Darlehen I Details
+    pdf.set_font("DejaVuSans", "B", 10)
+    pdf.cell(0, 7, "Darlehen I:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    pdf.cell(65, 7, "Zinssatz (%):", border=0)
+    pdf.cell(40, 7, format_percent(inputs.get('zins1_prozent', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Tilgungssatz (%):", border=0)
+    tilgung1 = inputs.get('tilgung1_prozent', '') or ""
+    if tilgung1 == "" and inputs.get('tilgung1_euro_mtl'):
+        tilgung1 = f"{inputs.get('tilgung1_euro_mtl')} € mtl."
+    pdf.cell(40, 7, str(tilgung1), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Laufzeit (Jahre):", border=0)
+    pdf.cell(40, 7, str(inputs.get('laufzeit1_jahre', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    # Monatsrate, falls berechnet
+    try:
+        from immo_core import berechne_darlehen_details
+        d1 = berechne_darlehen_details(
+            fk, inputs.get('zins1_prozent',0), tilgung_p=inputs.get('tilgung1_prozent',None),
+            tilgung_euro_mtl=inputs.get('tilgung1_euro_mtl',None),
+            laufzeit_jahre=inputs.get('laufzeit1_jahre',None),
+            modus=inputs.get('modus_d1','tilgungssatz')
+        )
+        pdf.cell(65, 7, "Monatsrate (€):", border=0)
+        pdf.cell(40, 7, format_eur(d1.get('monatsrate', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    except Exception:
+        pass
+    # Darlehen II Details, falls vorhanden
+    if inputs.get('zins2_prozent', 0):
+        pdf.set_font("DejaVuSans", "B", 10)
+        pdf.cell(0, 7, "Darlehen II:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVuSans", "", 10)
+        pdf.cell(65, 7, "Zinssatz (%):", border=0)
+        pdf.cell(40, 7, format_percent(inputs.get('zins2_prozent', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(65, 7, "Tilgungssatz (%):", border=0)
+        tilgung2 = inputs.get('tilgung2_prozent', '') or ""
+        if tilgung2 == "" and inputs.get('tilgung2_euro_mtl'):
+            tilgung2 = f"{inputs.get('tilgung2_euro_mtl')} € mtl."
+        pdf.cell(40, 7, str(tilgung2), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(65, 7, "Laufzeit (Jahre):", border=0)
+        pdf.cell(40, 7, str(inputs.get('laufzeit2_jahre', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
-    # 3. Detailrechnung & Persönlicher Cashflow (als Tabelle)
+    # 3. Detailrechnung & Persönlicher Cashflow (wie gehabt)
     pdf.set_font("DejaVuSans", "B", 12)
     pdf.cell(0, 8, "3. Detailrechnung & Persönlicher Cashflow", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "B", 10)
