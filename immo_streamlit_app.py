@@ -30,6 +30,9 @@ besonderheiten     = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 
 st.markdown("---")
 
+# Nutzungsart Auswahl (live-Umschaltung)
+nutzungsart = st.selectbox("Nutzungsart", ["Vermietung", "Eigennutzung"])
+
 # 2. Finanzierung
 st.header("2. Finanzierung")
 kaufpreis             = st.number_input("Kaufpreis (€)", min_value=0, max_value=10_000_000, value=250_000, step=1_000)
@@ -122,9 +125,16 @@ st.markdown("---")
 
 # 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
-kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
-umlagefaehige_monat    = st.number_input("Umlagefähige Kosten (€ mtl.)", min_value=0, max_value=1_000, value=150, step=10)
-nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10_000, value=960, step=10)
+
+if nutzungsart == "Vermietung":
+    kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
+    umlagefaehige_monat    = st.number_input("Umlagefähige Kosten (€ mtl.)", min_value=0, max_value=1_000, value=150, step=10)
+    nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10_000, value=960, step=10)
+else:
+    kaltmiete_monatlich = 0
+    umlagefaehige_monat = 0
+    nicht_umlagefaehige_pa = 0
+
 steuersatz             = st.number_input("Persönl. Steuersatz (%)", min_value=0.0, max_value=100.0, value=42.0, step=0.5)
 
 st.subheader("Persönliche Finanzsituation")
@@ -132,7 +142,7 @@ verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)",
 
 st.markdown("---")
 
-# Jetzt das Inputs-Dictionary!
+# Inputs-Dictionary
 inputs = {
     'wohnort': wohnort,
     'baujahr_kategorie': baujahr,
@@ -152,7 +162,7 @@ inputs = {
         'grundbuch': grundbuch,
         'makler': makler
     },
-    'nutzungsart': 'Vermietung',
+    'nutzungsart': nutzungsart,
     'zins1_prozent': zins1,
     'modus_d1': modus_d1,
     'tilgung1_prozent': tilgung1,
@@ -173,7 +183,7 @@ inputs = {
     'verfuegbares_einkommen_mtl': verfuegbares_einkommen
 }
 
-# Jetzt erst Berechnung!
+# Berechnung und Ergebnisanzeige wie gehabt
 results = immo_core.calculate_analytics(inputs)
 
 if 'error' in results:
@@ -195,7 +205,7 @@ else:
         "Gesamt-Cashflow (Ihre persönliche Si)",
         "Ihr monatl. Einkommen (vorher)",
         "+/- Mtl. Cashflow Immobilie",
-        "= Neues verfügbares Einkommen"  # Jetzt für beide Jahre sichtbar!
+        "= Neues verfügbares Einkommen"
     ]
 
     def get_val(key, col):
@@ -223,7 +233,6 @@ else:
                 style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
                 st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
 
-    # Hinweistext für das Anschaffungsjahr
     st.info("Das neue verfügbare Einkommen im Anschaffungsjahr enthält einmalige Sondereffekte (z.B. absetzbare Kaufnebenkosten). Dieser Wert ist nur im ersten Jahr so hoch und normalisiert sich ab dem Folgejahr.")
 
     # KPIs
@@ -246,7 +255,6 @@ else:
     with c2:
         st.pyplot(immo_core.plt_bar(results['bar_data'], ret_fig=True))
 
-    # PDF-Export wie gehabt
     if st.button("📄 PDF-Bericht erstellen"):
         from tempfile import NamedTemporaryFile
         with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
