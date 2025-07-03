@@ -17,6 +17,13 @@ except Exception:
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
 
+# NEU: Umschaltung ganz oben!
+nutzungsart = st.selectbox(
+    "Nutzungsart wählen",
+    ["Vermietung", "Eigennutzung"],
+    index=0
+)
+
 # 1. Objekt & Investition
 st.header("1. Objekt & Investition")
 wohnort            = st.text_input("Wohnort", "Nürnberg")
@@ -29,9 +36,6 @@ oepnv_anbindung    = st.selectbox("ÖPNV-Anbindung", ["Sehr gut","Gut","Okay"])
 besonderheiten     = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 
 st.markdown("---")
-
-# Nutzungsart Auswahl (live-Umschaltung)
-nutzungsart = st.selectbox("Nutzungsart", ["Vermietung", "Eigennutzung"])
 
 # 2. Finanzierung
 st.header("2. Finanzierung")
