@@ -47,7 +47,7 @@ def create_pdf_report(results, inputs):
         checklist.append("Bei vermieteter Wohnung: Mietvertrag")
     for item in checklist:
         pdf.cell(0, 8, f"- {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    return pdf.output().encode("latin-1", "replace")
+    return pdf.output(dest="S").encode("latin-1", "replace")
 
 # Titel und Icon
 try:
