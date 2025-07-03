@@ -107,7 +107,6 @@ def create_pdf_report(results, inputs):
 
     # Darlehen II Details, falls vorhanden
     if inputs.get('zins2_prozent', 0):
-        from immo_core import berechne_darlehen_details
         d2 = berechne_darlehen_details(
             0, inputs.get('zins2_prozent',0), tilgung_p=inputs.get('tilgung2_prozent',None),
             tilgung_euro_mtl=inputs.get('tilgung2_euro_mtl',None),
@@ -133,7 +132,7 @@ def create_pdf_report(results, inputs):
         pdf.cell(40, 7, format_eur(d2.get('monatsrate', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
-    # 3. Detailrechnung & Persönlicher Cashflow (wie gehabt)
+    # 3. Detailrechnung & Persönlicher Cashflow (je nach Nutzungsart)
     pdf.set_font("DejaVuSans", "B", 12)
     pdf.cell(0, 8, "3. Detailrechnung & Persönlicher Cashflow", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "B", 10)
@@ -141,21 +140,54 @@ def create_pdf_report(results, inputs):
     pdf.cell(35, 7, "Jahr 1 (€)", border=1)
     pdf.cell(35, 7, "Laufende Jahre (€)", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "", 10)
-    for row in results['display_table']:
-        kennzahl = str(row.get('kennzahl', ''))
-        val1_raw = row.get('val1', '')
-        val2_raw = row.get('val2', '')
-        try:
-            val1 = format_eur(val1_raw) if is_number(val1_raw) else str(val1_raw) if val1_raw not in [None, "None"] else ""
-        except Exception:
-            val1 = ""
-        try:
-            val2 = format_eur(val2_raw) if is_number(val2_raw) else str(val2_raw) if val2_raw not in [None, "None"] else ""
-        except Exception:
-            val2 = ""
-        pdf.cell(80, 7, kennzahl, border=1)
-        pdf.cell(35, 7, val1, border=1)
-        pdf.cell(35, 7, val2, border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    # Dynamische Auswahl der Zeilen je nach Nutzungsart
+    if inputs.get("nutzungsart") == "Vermietung":
+        all_keys = [
+            "Einnahmen p.a. (Kaltmiete)",
+            "Umlagefähige Kosten p.a.",
+            "Nicht umlagef. Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.",
+            "- AfA p.a.",
+            "- Absetzbare Kaufnebenkosten (Jahr 1)",
+            "= Steuerlicher Gewinn/Verlust p.a.",
+            "+ Steuerersparnis / -last p.a.",
+            "= Effektiver Cashflow n. St. p.a.",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
+    else:
+        all_keys = [
+            "Laufende Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
+    for key in all_keys:
+        row = next((r for r in results['display_table'] if key in r['kennzahl']), None)
+        if row:
+            kennzahl = str(row.get('kennzahl', ''))
+            val1_raw = row.get('val1', '')
+            val2_raw = row.get('val2', '')
+            try:
+                val1 = format_eur(val1_raw) if is_number(val1_raw) else str(val1_raw) if val1_raw not in [None, "None"] else ""
+            except Exception:
+                val1 = ""
+            try:
+                val2 = format_eur(val2_raw) if is_number(val2_raw) else str(val2_raw) if val2_raw not in [None, "None"] else ""
+            except Exception:
+                val2 = ""
+            pdf.cell(80, 7, kennzahl, border=1)
+            pdf.cell(35, 7, val1, border=1)
+            pdf.cell(35, 7, val2, border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     # 4. Finanzkennzahlen (optional, falls vorhanden)
     if 'finanzkennzahlen' in results:
@@ -172,7 +204,7 @@ def create_pdf_report(results, inputs):
             pdf.cell(80, 7, k, border=1)
             pdf.cell(35, 7, str(v), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    # 5. Checkliste
+    # 5. Checkliste mit Checkboxen
     pdf.ln(3)
     pdf.set_font("DejaVuSans", "B", 12)
     pdf.cell(0, 8, "5. Checkliste: Wichtige Dokumente", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
@@ -190,8 +222,11 @@ def create_pdf_report(results, inputs):
     ]
     if inputs.get("nutzungsart") == "Vermietung":
         checklist.append("Bei vermieteter Wohnung: Mietvertrag")
+    checklist_status = inputs.get("checklist_status", {})
     for item in checklist:
-        pdf.cell(0, 7, f"- {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        checked = checklist_status.get(item, False)
+        box = "☑" if checked else "☐"
+        pdf.cell(0, 7, f"{box} {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     result = pdf.output()
     if isinstance(result, bytearray):
         return bytes(result)
@@ -324,6 +359,26 @@ st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 st.markdown("---")
 
+# Interaktive Checkliste-Status speichern
+checklist_items = [
+    "Grundbuchauszug",
+    "Flurkarte",
+    "Energieausweis",
+    "Teilungserklärung & Gemeinschaftsordnung",
+    "Protokolle der letzten 3–5 Eigentümerversammlungen",
+    "Jahresabrechnung & Wirtschaftsplan",
+    "Höhe der Instandhaltungsrücklage",
+    "Exposé & Grundrisse",
+    "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
+]
+if nutzungsart == "Vermietung":
+    checklist_items.append("Bei vermieteter Wohnung: Mietvertrag")
+
+if 'checklist_status' not in st.session_state:
+    st.session_state['checklist_status'] = {}
+for item in checklist_items:
+    st.session_state['checklist_status'][item] = st.checkbox(item, key=f"check_{item}", value=st.session_state['checklist_status'].get(item, False))
+
 inputs = {
     'wohnort': wohnort,
     'baujahr_kategorie': baujahr,
@@ -361,7 +416,8 @@ inputs = {
     'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
     'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
     'steuersatz': steuersatz,
-    'verfuegbares_einkommen_mtl': verfuegbares_einkommen
+    'verfuegbares_einkommen_mtl': verfuegbares_einkommen,
+    'checklist_status': st.session_state['checklist_status']
 }
 
 if 'results' not in st.session_state:
@@ -452,21 +508,8 @@ if results:
 
     # 4. Checkliste
     st.header("4. Checkliste: Wichtige Dokumente für den Immobilienkauf")
-    checklist = [
-        "Grundbuchauszug",
-        "Flurkarte",
-        "Energieausweis",
-        "Teilungserklärung & Gemeinschaftsordnung",
-        "Protokolle der letzten 3–5 Eigentümerversammlungen",
-        "Jahresabrechnung & Wirtschaftsplan",
-        "Höhe der Instandhaltungsrücklage",
-        "Exposé & Grundrisse",
-        "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
-    ]
-    if nutzungsart == "Vermietung":
-        checklist.append("Bei vermieteter Wohnung: Mietvertrag")
-    for item in checklist:
-        st.checkbox(item, key=f"check_{item}")
+    for item in checklist_items:
+        st.checkbox(item, key=f"check_{item}", value=st.session_state['checklist_status'].get(item, False))
 
     st.markdown("---")
     st.subheader("Bericht als PDF exportieren")
