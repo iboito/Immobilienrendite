@@ -27,7 +27,7 @@ energieeffizienz   = st.selectbox("Energieeffizienz", ["A+","A","B","C","D","E",
 oepnv_anbindung    = st.selectbox("ÖPNV-Anbindung", ["Sehr gut","Gut","Okay"])
 besonderheiten     = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 
-st.markdown("---")
+st.markdown("---")  # << Trennlinie vor Abschnitt 2
 
 # 2. Finanzierung
 st.header("2. Finanzierung")
@@ -108,7 +108,7 @@ if show_darlehen2:
         f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**"
     )
 
-st.markdown("---")
+st.markdown("---")  # << Trennlinie vor Abschnitt 3
 
 # 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
@@ -120,7 +120,7 @@ steuersatz             = st.number_input("Persönl. Steuersatz (%)", min_value=0
 st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 
-st.markdown("---")
+st.markdown("---")  # << Trennlinie vor Ergebnissen
 
 st.subheader("Ergebnisse")
 inputs = {
