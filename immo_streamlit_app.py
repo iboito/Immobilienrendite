@@ -1,426 +1,497 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
-import pandas as pd
-import numpy as np
+from pathlib import Path
+from PIL import Image
+import immo_core
+from fpdf import FPDF
+from fpdf.enums import XPos, YPos
+import matplotlib.pyplot as plt
 from datetime import datetime
-import plotly.express as px
-import plotly.graph_objects as go
 
-# Streamlit-Konfiguration
-st.set_page_config(
-    page_title="Immobilien-Analyse Rechner",
-    page_icon="🏠",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
-# Session State initialisieren
-if 'checkboxes' not in st.session_state:
-    st.session_state.checkboxes = {}
+def format_eur(val):
+    try:
+        f = float(str(val).replace(",", "."))
+        return f"{f:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return str(val)
 
-if 'form_data' not in st.session_state:
-    st.session_state.form_data = {}
+def format_percent(val):
+    try:
+        f = float(val)
+        return f"{f:.2f} %"
+    except Exception:
+        return str(val)
 
-# Haupttitel
-st.title("🏠 Immobilien-Analyse Rechner")
-st.markdown("---")
+def is_number(val):
+    try:
+        float(str(val).replace(",", "."))
+        return True
+    except:
+        return False
 
-# Sidebar mit Navigationsmenü
-st.sidebar.title("📋 Navigation")
-selected_section = st.sidebar.selectbox(
-    "Abschnitt auswählen:",
-    ["Übersicht", "Objekt & Investition", "Finanzierung", "Rendite-Analyse", "Ergebnisse"]
-)
+def create_pdf_report(results, inputs, checklist_items):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.add_font("DejaVuSans", "", "DejaVuSans.ttf")
+    pdf.add_font("DejaVuSans", "B", "DejaVuSans-Bold.ttf")
+    pdf.set_font("DejaVuSans", "B", 16)
+    pdf.cell(0, 12, "Finanzanalyse Immobilieninvestment", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+    pdf.set_font("DejaVuSans", "", 10)
+    pdf.cell(0, 8, f"Bericht erstellt am: {datetime.now().strftime('%d.%m.%Y')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 8, f"Analyse für Objekt in: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
 
-# 1. OBJEKT & INVESTITION
-if selected_section in ["Übersicht", "Objekt & Investition"]:
-    st.header("1. Objekt & Investition")
-    
-    # Grunddaten in zwei Spalten
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Objektdaten")
-        kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, value=300000, step=5000)
-        nebenkosten_prozent = st.slider("Nebenkosten (%)", min_value=5.0, max_value=15.0, value=10.0, step=0.5)
-        nebenkosten = kaufpreis * (nebenkosten_prozent / 100)
-        st.write(f"Nebenkosten: {nebenkosten:,.2f} €")
-        
-        gesamtinvestition = kaufpreis + nebenkosten
-        st.write(f"**Gesamtinvestition: {gesamtinvestition:,.2f} €**")
-        
-        wohnflaeche = st.number_input("Wohnfläche (m²)", min_value=0, value=80, step=5)
-        zimmer = st.number_input("Anzahl Zimmer", min_value=1, value=3, step=1)
-        baujahr = st.number_input("Baujahr", min_value=1900, max_value=2024, value=1990, step=1)
-        
-    with col2:
-        st.subheader("Standort & Zustand")
-        bundesland = st.selectbox("Bundesland", [
-            "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", 
-            "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen", 
-            "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen", 
-            "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen"
-        ])
-        
-        stadt = st.text_input("Stadt/Ort", value="")
-        plz = st.text_input("Postleitzahl", value="")
-        
-        zustand = st.selectbox("Zustand der Immobilie", [
-            "Neuwertig", "Sehr gut", "Gut", "Befriedigend", 
-            "Ausreichend", "Mangelhaft", "Renovierungsbedürftig"
-        ])
-        
-        objektart = st.selectbox("Objektart", [
-            "Eigentumswohnung", "Einfamilienhaus", "Doppelhaushälfte", 
-            "Reihenhaus", "Mehrfamilienhaus", "Gewerbeimmobilie"
-        ])
-    
-    # Besonderheiten
-    st.subheader("Besonderheiten")
-    besonderheiten = st.text_area(
-        "Besondere Merkmale, Renovierungen, Ausstattung etc.",
-        height=100,
-        placeholder="z.B. Balkon, Garage, kürzlich renoviert, Denkmalschutz..."
+    # 1. Objekt- & Investmentübersicht
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "1. Objekt- & Investmentübersicht", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    immotable = [
+        ("Baujahr:", inputs.get('baujahr_kategorie', '')),
+        ("Wohnfläche (qm):", str(inputs.get('wohnflaeche_qm', ''))),
+        ("Zimmeranzahl:", str(inputs.get('zimmeranzahl', ''))),
+        ("Stockwerk:", str(inputs.get('stockwerk', ''))),
+        ("Energieeffizienz:", str(inputs.get('energieeffizienz', ''))),
+        ("ÖPNV-Anbindung:", str(inputs.get('oepnv_anbindung', ''))),
+        ("Besonderheiten:", str(inputs.get('besonderheiten', ''))),
+        ("Kaufpreis:", format_eur(inputs.get('kaufpreis', 0))),
+        ("Garage/Stellplatz:", format_eur(inputs.get('garage_stellplatz_kosten', 0))),
+        ("Investitionsbedarf:", format_eur(inputs.get('invest_bedarf', 0))),
+    ]
+    nebenkosten_summe = (inputs.get('kaufpreis',0) + inputs.get('garage_stellplatz_kosten',0)) * sum(inputs.get('nebenkosten_prozente',{}).values())/100
+    immotable.append(("Kaufnebenkosten:", format_eur(nebenkosten_summe)))
+    gesamtinvest = inputs.get('kaufpreis',0)+inputs.get('garage_stellplatz_kosten',0)+inputs.get('invest_bedarf',0)+nebenkosten_summe
+    immotable.append(("Gesamtinvestition:", format_eur(gesamtinvest)))
+    for k, v in immotable:
+        pdf.cell(65, 7, k, border=0)
+        pdf.cell(40, 7, v, border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
+
+    # 2. Finanzierungsstruktur & Darlehensdetails
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "2. Finanzierungsstruktur & Darlehensdetails", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    ek = inputs.get('eigenkapital',0)
+    fk = gesamtinvest - ek
+    pdf.cell(65, 7, "Eigenkapital:", border=0)
+    pdf.cell(40, 7, format_eur(ek), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Fremdkapital (Darlehen):", border=0)
+    pdf.cell(40, 7, format_eur(fk), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    # Darlehen I Details (inkl. automatisch berechneter Laufzeit)
+    from immo_core import berechne_darlehen_details
+    d1 = berechne_darlehen_details(
+        fk, inputs.get('zins1_prozent',0), tilgung_p=inputs.get('tilgung1_prozent',None),
+        tilgung_euro_mtl=inputs.get('tilgung1_euro_mtl',None),
+        laufzeit_jahre=inputs.get('laufzeit1_jahre',None),
+        modus=inputs.get('modus_d1','tilgungssatz')
     )
-    
-    # CHECKLISTE - Hier positioniert wie gewünscht
-    st.markdown("---")
-    st.subheader("✅ Checkliste: Wichtige Dokumente")
-    st.write("Haken Sie die bereits vorhandenen Dokumente ab:")
-    
-    # Zwei-Spalten Layout für bessere Übersicht
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.session_state.checkboxes['grundbuch'] = st.checkbox(
-            "📄 Grundbuchauszug",
-            value=st.session_state.checkboxes.get('grundbuch', False)
+    pdf.set_font("DejaVuSans", "B", 10)
+    pdf.cell(0, 7, "Darlehen I:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    pdf.cell(65, 7, "Zinssatz (%):", border=0)
+    pdf.cell(40, 7, format_percent(inputs.get('zins1_prozent', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Tilgungssatz (%):", border=0)
+    tilgung1 = inputs.get('tilgung1_prozent', '') or ""
+    if tilgung1 == "" and inputs.get('tilgung1_euro_mtl'):
+        tilgung1 = f"{inputs.get('tilgung1_euro_mtl')} € mtl."
+    pdf.cell(40, 7, str(tilgung1), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    laufzeit_anzeige = inputs.get('laufzeit1_jahre')
+    if not laufzeit_anzeige or laufzeit_anzeige in [None, '', 0]:
+        laufzeit_anzeige = f"{d1.get('laufzeit_jahre',''):.1f}" if d1.get('laufzeit_jahre') else ""
+    pdf.cell(65, 7, "Laufzeit (Jahre):", border=0)
+    pdf.cell(40, 7, str(laufzeit_anzeige), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Monatsrate (€):", border=0)
+    pdf.cell(40, 7, format_eur(d1.get('monatsrate', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    # Darlehen II Details, falls vorhanden
+    if inputs.get('zins2_prozent', 0):
+        d2 = berechne_darlehen_details(
+            0, inputs.get('zins2_prozent',0), tilgung_p=inputs.get('tilgung2_prozent',None),
+            tilgung_euro_mtl=inputs.get('tilgung2_euro_mtl',None),
+            laufzeit_jahre=inputs.get('laufzeit2_jahre',None),
+            modus=inputs.get('modus_d2','tilgungssatz')
         )
-        st.session_state.checkboxes['flurkarte'] = st.checkbox(
-            "🗺️ Flurkarte",
-            value=st.session_state.checkboxes.get('flurkarte', False)
-        )
-        st.session_state.checkboxes['energieausweis'] = st.checkbox(
-            "⚡ Energieausweis",
-            value=st.session_state.checkboxes.get('energieausweis', False)
-        )
-        st.session_state.checkboxes['teilungserklaerung'] = st.checkbox(
-            "📋 Teilungserklärung & Gemeinschaftsordnung",
-            value=st.session_state.checkboxes.get('teilungserklaerung', False)
-        )
-        st.session_state.checkboxes['protokolle'] = st.checkbox(
-            "📝 Protokolle der letzten 3-5 Eigentümerversammlungen",
-            value=st.session_state.checkboxes.get('protokolle', False)
-        )
-        
-    with col2:
-        st.session_state.checkboxes['jahresabrechnung'] = st.checkbox(
-            "💰 Jahresabrechnung & Wirtschaftsplan",
-            value=st.session_state.checkboxes.get('jahresabrechnung', False)
-        )
-        st.session_state.checkboxes['ruecklage'] = st.checkbox(
-            "🏦 Höhe der Instandhaltungsrücklage",
-            value=st.session_state.checkboxes.get('ruecklage', False)
-        )
-        st.session_state.checkboxes['expose'] = st.checkbox(
-            "📊 Exposé & Grundrisse",
-            value=st.session_state.checkboxes.get('expose', False)
-        )
-        st.session_state.checkboxes['weg_protokolle'] = st.checkbox(
-            "⚠️ WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände",
-            value=st.session_state.checkboxes.get('weg_protokolle', False)
-        )
-        st.session_state.checkboxes['versicherung'] = st.checkbox(
-            "🛡️ Versicherungsnachweis",
-            value=st.session_state.checkboxes.get('versicherung', False)
-        )
-    
-    # Fortschrittsanzeige
-    completed_docs = sum(st.session_state.checkboxes.values())
-    total_docs = len(st.session_state.checkboxes)
-    progress = completed_docs / total_docs
-    
-    st.markdown("---")
-    st.subheader("📈 Dokumenten-Fortschritt")
-    st.progress(progress)
-    st.write(f"**{completed_docs} von {total_docs} Dokumenten** vorhanden ({progress*100:.1f}%)")
-    
-    if progress == 1.0:
-        st.success("🎉 Alle Dokumente vollständig! Sie sind optimal vorbereitet.")
-    elif progress >= 0.8:
-        st.info("👍 Sehr gut! Fast alle wichtigen Dokumente sind vorhanden.")
-    elif progress >= 0.5:
-        st.warning("⚠️ Noch einige wichtige Dokumente fehlen.")
+        pdf.set_font("DejaVuSans", "B", 10)
+        pdf.cell(0, 7, "Darlehen II:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVuSans", "", 10)
+        pdf.cell(65, 7, "Zinssatz (%):", border=0)
+        pdf.cell(40, 7, format_percent(inputs.get('zins2_prozent', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(65, 7, "Tilgungssatz (%):", border=0)
+        tilgung2 = inputs.get('tilgung2_prozent', '') or ""
+        if tilgung2 == "" and inputs.get('tilgung2_euro_mtl'):
+            tilgung2 = f"{inputs.get('tilgung2_euro_mtl')} € mtl."
+        pdf.cell(40, 7, str(tilgung2), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        laufzeit2_anzeige = inputs.get('laufzeit2_jahre')
+        if not laufzeit2_anzeige or laufzeit2_anzeige in [None, '', 0]:
+            laufzeit2_anzeige = f"{d2.get('laufzeit_jahre',''):.1f}" if d2.get('laufzeit_jahre') else ""
+        pdf.cell(65, 7, "Laufzeit (Jahre):", border=0)
+        pdf.cell(40, 7, str(laufzeit2_anzeige), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(65, 7, "Monatsrate (€):", border=0)
+        pdf.cell(40, 7, format_eur(d2.get('monatsrate', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
+
+    # 3. Detailrechnung & Persönlicher Cashflow (je nach Nutzungsart)
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "3. Detailrechnung & Persönlicher Cashflow", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "B", 10)
+    pdf.cell(80, 7, "Kennzahl", border=1)
+    pdf.cell(35, 7, "Jahr 1 (€)", border=1)
+    pdf.cell(35, 7, "Laufende Jahre (€)", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    if inputs.get("nutzungsart") == "Vermietung":
+        all_keys = [
+            "Einnahmen p.a. (Kaltmiete)",
+            "Umlagefähige Kosten p.a.",
+            "Nicht umlagef. Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.",
+            "- AfA p.a.",
+            "- Absetzbare Kaufnebenkosten (Jahr 1)",
+            "= Steuerlicher Gewinn/Verlust p.a.",
+            "+ Steuerersparnis / -last p.a.",
+            "= Effektiver Cashflow n. St. p.a.",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
     else:
-        st.error("❌ Wichtige Dokumente fehlen noch. Bitte vervollständigen Sie die Unterlagen.")
+        all_keys = [
+            "Laufende Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
+    for key in all_keys:
+        row = next((r for r in results['display_table'] if key in r['kennzahl']), None)
+        if row:
+            kennzahl = str(row.get('kennzahl', ''))
+            val1_raw = row.get('val1', '')
+            val2_raw = row.get('val2', '')
+            try:
+                val1 = format_eur(val1_raw) if is_number(val1_raw) else str(val1_raw) if val1_raw not in [None, "None"] else ""
+            except Exception:
+                val1 = ""
+            try:
+                val2 = format_eur(val2_raw) if is_number(val2_raw) else str(val2_raw) if val2_raw not in [None, "None"] else ""
+            except Exception:
+                val2 = ""
+            pdf.cell(80, 7, kennzahl, border=1)
+            pdf.cell(35, 7, val1, border=1)
+            pdf.cell(35, 7, val2, border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-# 2. FINANZIERUNG
-if selected_section in ["Übersicht", "Finanzierung"]:
-    st.header("2. Finanzierung")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Eigenkapital")
-        eigenkapital = st.number_input("Verfügbares Eigenkapital (€)", min_value=0, value=50000, step=5000)
-        eigenkapital_anteil = (eigenkapital / gesamtinvestition) * 100 if 'gesamtinvestition' in locals() else 0
-        st.write(f"Eigenkapitalanteil: {eigenkapital_anteil:.1f}%")
-        
-        st.subheader("Darlehen")
-        darlehenssumme = gesamtinvestition - eigenkapital if 'gesamtinvestition' in locals() else 0
-        st.write(f"Benötigte Darlehenssumme: {darlehenssumme:,.2f} €")
-        
-        zinssatz = st.slider("Zinssatz (%)", min_value=0.5, max_value=8.0, value=3.5, step=0.1)
-        laufzeit = st.number_input("Laufzeit (Jahre)", min_value=5, max_value=40, value=25, step=1)
-        
-    with col2:
-        st.subheader("Monatliche Belastung")
-        if darlehenssumme > 0:
-            # Annuitätenrechnung
-            monatszins = zinssatz / 100 / 12
-            anzahl_raten = laufzeit * 12
-            
-            if monatszins > 0:
-                monatliche_rate = darlehenssumme * (monatszins * (1 + monatszins)**anzahl_raten) / ((1 + monatszins)**anzahl_raten - 1)
-            else:
-                monatliche_rate = darlehenssumme / anzahl_raten
-            
-            st.write(f"**Monatliche Rate: {monatliche_rate:,.2f} €**")
-            
-            # Tilgungsplan erste Jahre
-            restschuld = darlehenssumme
-            st.write("**Tilgungsplan (erste 5 Jahre):**")
-            for jahr in range(1, 6):
-                zinsen_jahr = restschuld * (zinssatz / 100)
-                tilgung_jahr = (monatliche_rate * 12) - zinsen_jahr
-                restschuld -= tilgung_jahr
-                st.write(f"Jahr {jahr}: Tilgung {tilgung_jahr:,.0f} €, Restschuld {restschuld:,.0f} €")
+    # 4. Finanzkennzahlen (optional, falls vorhanden)
+    if 'finanzkennzahlen' in results:
+        pdf.ln(3)
+        pdf.set_font("DejaVuSans", "B", 12)
+        pdf.cell(0, 8, "4. Finanzkennzahlen", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVuSans", "B", 10)
+        pdf.cell(80, 7, "Kennzahl", border=1)
+        pdf.cell(35, 7, "Wert", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVuSans", "", 10)
+        for k, v in results['finanzkennzahlen'].items():
+            if "rendite" in k.lower():
+                v = format_percent(v)
+            pdf.cell(80, 7, k, border=1)
+            pdf.cell(35, 7, str(v), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-# 3. RENDITE-ANALYSE
-if selected_section in ["Übersicht", "Rendite-Analyse"]:
-    st.header("3. Rendite-Analyse")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Mieteinnahmen")
-        kaltmiete_monat = st.number_input("Kaltmiete pro Monat (€)", min_value=0, value=1200, step=50)
-        kaltmiete_jahr = kaltmiete_monat * 12
-        st.write(f"Kaltmiete pro Jahr: {kaltmiete_jahr:,.2f} €")
-        
-        nebenkosten_mieter = st.number_input("Nebenkosten Mieter (€/Monat)", min_value=0, value=200, step=25)
-        warmmiete = kaltmiete_monat + nebenkosten_mieter
-        st.write(f"Warmmiete: {warmmiete:,.2f} €/Monat")
-        
-        leerstand_prozent = st.slider("Leerstand (%)", min_value=0.0, max_value=20.0, value=5.0, step=0.5)
-        effektive_mieteinnahmen = kaltmiete_jahr * (1 - leerstand_prozent / 100)
-        st.write(f"Effektive Mieteinnahmen: {effektive_mieteinnahmen:,.2f} €/Jahr")
-        
-    with col2:
-        st.subheader("Laufende Kosten")
-        hausgeld = st.number_input("Hausgeld/Nebenkosten (€/Monat)", min_value=0, value=150, step=25)
-        verwaltung = st.number_input("Verwaltungskosten (€/Monat)", min_value=0, value=30, step=5)
-        versicherung = st.number_input("Versicherung (€/Jahr)", min_value=0, value=300, step=25)
-        instandhaltung = st.number_input("Instandhaltungsrücklage (€/Jahr)", min_value=0, value=1000, step=100)
-        sonstige_kosten = st.number_input("Sonstige Kosten (€/Jahr)", min_value=0, value=200, step=50)
-        
-        kosten_monat = hausgeld + verwaltung
-        kosten_jahr = (kosten_monat * 12) + versicherung + instandhaltung + sonstige_kosten
-        st.write(f"**Gesamtkosten pro Jahr: {kosten_jahr:,.2f} €**")
+    # 5. Checkliste mit Checkboxen (Status nur auslesen, NIE Checkbox-Widget im PDF-Block!)
+    pdf.ln(3)
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "5. Checkliste: Wichtige Dokumente", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    checklist_status = inputs.get("checklist_status", {})
+    for item in checklist_items:
+        checked = checklist_status.get(item, False)
+        box = "☑" if checked else "☐"
+        pdf.cell(0, 7, f"{box} {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    result = pdf.output()
+    if isinstance(result, bytearray):
+        return bytes(result)
+    return result
 
-# 4. ERGEBNISSE & KENNZAHLEN
-if selected_section in ["Übersicht", "Ergebnisse"]:
-    st.header("4. Ergebnisse & Kennzahlen")
-    
-    # Berechnung der Kennzahlen
-    if 'gesamtinvestition' in locals() and 'effektive_mieteinnahmen' in locals() and 'kosten_jahr' in locals():
-        
-        # Nettomietrendite
-        nettomietrendite = ((effektive_mieteinnahmen - kosten_jahr) / gesamtinvestition) * 100
-        
-        # Bruttomietrendite
-        bruttomietrendite = (kaltmiete_jahr / kaufpreis) * 100
-        
-        # Cashflow
-        cashflow_monat = (effektive_mieteinnahmen - kosten_jahr) / 12
-        if 'monatliche_rate' in locals():
-            cashflow_monat -= monatliche_rate
-        
-        cashflow_jahr = cashflow_monat * 12
-        
-        # Eigenkapitalrendite
-        if eigenkapital > 0:
-            eigenkapitalrendite = (cashflow_jahr / eigenkapital) * 100
-        else:
-            eigenkapitalrendite = 0
-            
-        # Vervielfältiger
-        vervielfaeltiger = kaufpreis / kaltmiete_jahr if kaltmiete_jahr > 0 else 0
-        
-        # Ergebnisse in Spalten anzeigen
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                label="Bruttomietrendite",
-                value=f"{bruttomietrendite:.2f}%",
-                delta=f"{bruttomietrendite-6:.2f}%" if bruttomietrendite >= 6 else None
-            )
-            
-        with col2:
-            st.metric(
-                label="Nettomietrendite", 
-                value=f"{nettomietrendite:.2f}%",
-                delta=f"{nettomietrendite-4:.2f}%" if nettomietrendite >= 4 else None
-            )
-            
-        with col3:
-            st.metric(
-                label="Cashflow (monatlich)",
-                value=f"{cashflow_monat:,.0f} €",
-                delta="Positiv" if cashflow_monat > 0 else "Negativ"
-            )
-            
-        with col4:
-            st.metric(
-                label="Eigenkapitalrendite",
-                value=f"{eigenkapitalrendite:.2f}%",
-                delta=f"{eigenkapitalrendite-8:.2f}%" if eigenkapitalrendite >= 8 else None
-            )
-        
-        # Detailanalyse
-        st.subheader("📊 Detailanalyse")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write("**Kaufpreis-Kennzahlen:**")
-            st.write(f"• Preis pro m²: {kaufpreis/wohnflaeche:.2f} €/m²")
-            st.write(f"• Vervielfältiger: {vervielfaeltiger:.1f}")
-            st.write(f"• Kaufnebenkosten: {nebenkosten_prozent:.1f}%")
-            
-            st.write("**Rendite-Kennzahlen:**")
-            st.write(f"• Bruttomietrendite: {bruttomietrendite:.2f}%")
-            st.write(f"• Nettomietrendite: {nettomietrendite:.2f}%")
-            st.write(f"• Eigenkapitalrendite: {eigenkapitalrendite:.2f}%")
-            
-        with col2:
-            st.write("**Cashflow-Analyse:**")
-            st.write(f"• Mieteinnahmen: {effektive_mieteinnahmen:,.2f} €/Jahr")
-            st.write(f"• Bewirtschaftungskosten: {kosten_jahr:,.2f} €/Jahr")
-            if 'monatliche_rate' in locals():
-                st.write(f"• Finanzierungskosten: {monatliche_rate*12:,.2f} €/Jahr")
-            st.write(f"• **Netto-Cashflow: {cashflow_jahr:,.2f} €/Jahr**")
-            
-            st.write("**Bewertung:**")
-            if bruttomietrendite >= 6:
-                st.success("✅ Sehr gute Bruttomietrendite")
-            elif bruttomietrendite >= 4:
-                st.info("ℹ️ Solide Bruttomietrendite")
-            else:
-                st.warning("⚠️ Niedrige Bruttomietrendite")
-        
-        # Grafische Darstellung
-        st.subheader("📈 Grafische Auswertung")
-        
-        # Cashflow-Diagramm
-        cashflow_data = {
-            'Kategorie': ['Mieteinnahmen', 'Bewirtschaftungskosten', 'Finanzierungskosten', 'Netto-Cashflow'],
-            'Betrag': [effektive_mieteinnahmen, -kosten_jahr, 
-                      -monatliche_rate*12 if 'monatliche_rate' in locals() else 0, 
-                      cashflow_jahr],
-            'Farbe': ['green', 'red', 'red', 'blue']
-        }
-        
-        fig = px.bar(
-            cashflow_data, 
-            x='Kategorie', 
-            y='Betrag',
-            color='Farbe',
-            title='Jährlicher Cashflow',
-            color_discrete_map={'green': 'green', 'red': 'red', 'blue': 'blue'}
-        )
-        fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Rendite-Vergleich
-        rendite_data = {
-            'Rendite-Art': ['Bruttomietrendite', 'Nettomietrendite', 'Eigenkapitalrendite'],
-            'Prozent': [bruttomietrendite, nettomietrendite, eigenkapitalrendite]
-        }
-        
-        fig2 = px.bar(
-            rendite_data, 
-            x='Rendite-Art', 
-            y='Prozent',
-            title='Rendite-Vergleich',
-            color='Prozent',
-            color_continuous_scale='RdYlGn'
-        )
-        st.plotly_chart(fig2, use_container_width=True)
+# Titel und Icon
+try:
+    icon_path = Path(__file__).with_name("10751558.png")
+    st.image(Image.open(icon_path).resize((64, 64)))
+except Exception:
+    pass
 
-# ÜBERSICHT/DASHBOARD
-if selected_section == "Übersicht":
-    st.header("📊 Übersicht & Zusammenfassung")
-    
-    # Schnellübersicht in Metriken
-    if 'gesamtinvestition' in locals():
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Gesamtinvestition", f"{gesamtinvestition:,.0f} €")
-        with col2:
-            st.metric("Eigenkapital", f"{eigenkapital:,.0f} €")
-        with col3:
-            if 'kaltmiete_monat' in locals():
-                st.metric("Kaltmiete/Monat", f"{kaltmiete_monat:,.0f} €")
-        with col4:
-            if 'bruttomietrendite' in locals():
-                st.metric("Bruttomietrendite", f"{bruttomietrendite:.1f}%")
-    
-    # Wichtige Hinweise
-    st.subheader("💡 Wichtige Hinweise")
-    st.info("""
-    **Vor dem Immobilienkauf beachten:**
-    
-    • Lassen Sie die Immobilie von einem Sachverständigen bewerten
-    • Prüfen Sie die Finanzierungsmöglichkeiten bei mehreren Banken
-    • Berücksichtigen Sie steuerliche Aspekte (Abschreibungen, Werbungskosten)
-    • Kalkulieren Sie Rücklagen für Renovierungen und Instandhaltung
-    • Informieren Sie sich über die Mietpreise in der Region
-    • Beachten Sie die Entwicklung des Stadtteils/der Region
-    """)
-
-# Footer
+st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #666;'>
-    <p>🏠 Immobilien-Analyse Rechner | Entwickelt mit Streamlit</p>
-    <p><small>Alle Angaben ohne Gewähr. Für wichtige Entscheidungen konsultieren Sie bitte einen Experten.</small></p>
-</div>
-""", unsafe_allow_html=True)
 
-# Datenexport
-if st.sidebar.button("📥 Daten exportieren"):
-    # Sammle alle Daten für Export
-    export_data = {
-        'Timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'Kaufpreis': kaufpreis if 'kaufpreis' in locals() else 0,
-        'Nebenkosten': nebenkosten if 'nebenkosten' in locals() else 0,
-        'Gesamtinvestition': gesamtinvestition if 'gesamtinvestition' in locals() else 0,
-        'Eigenkapital': eigenkapital if 'eigenkapital' in locals() else 0,
-        'Kaltmiete_Monat': kaltmiete_monat if 'kaltmiete_monat' in locals() else 0,
-        'Bruttomietrendite': bruttomietrendite if 'bruttomietrendite' in locals() else 0,
-        'Nettomietrendite': nettomietrendite if 'nettomietrendite' in locals() else 0,
-        'Cashflow_Jahr': cashflow_jahr if 'cashflow_jahr' in locals() else 0,
-        'Checkliste_Vollständig': all(st.session_state.checkboxes.values())
-    }
-    
-    df_export = pd.DataFrame([export_data])
-    csv = df_export.to_csv(index=False)
-    st.sidebar.download_button(
-        label="💾 Als CSV herunterladen",
-        data=csv,
-        file_name=f'immobilien_analyse_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-        mime='text/csv',
+nutzungsart = st.selectbox(
+    "Nutzungsart wählen",
+    ["Vermietung", "Eigennutzung"],
+    index=0
+)
+st.markdown("---")
+
+# 1. Objekt & Investition
+st.header("1. Objekt & Investition")
+wohnort = st.text_input("Wohnort", "Nürnberg")
+baujahr = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
+wohnflaeche_qm = st.number_input("Wohnfläche (qm)", min_value=10, max_value=500, value=80)
+stockwerk = st.selectbox("Stockwerk", ["EG","1","2","3","4","5","6","DG"])
+zimmeranzahl = st.selectbox("Zimmeranzahl", ["1","1,5","2","2,5","3","3,5","4","4,5","5"], index=4)
+energieeffizienz = st.selectbox("Energieeffizienz", ["A+","A","B","C","D","E","F","G","H"], index=2)
+oepnv_anbindung = st.selectbox("ÖPNV-Anbindung", ["Sehr gut","Gut","Okay"])
+besonderheiten = st.text_input("Besonderheiten", "Balkon, Einbauküche")
+st.markdown("---")
+
+# 2. Finanzierung
+st.header("2. Finanzierung")
+kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, max_value=10_000_000, value=250_000, step=1_000)
+garage_stellplatz = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50_000, value=0, step=1_000)
+invest_bedarf = st.number_input("Zusätzl. Investitionsbedarf (€)", min_value=0, max_value=1_000_000, value=10_000, step=1_000)
+eigenkapital = st.number_input("Eigenkapital (€)", min_value=0, max_value=10_000_000, value=80_000, step=1_000)
+
+st.subheader("Kaufnebenkosten (%)")
+grunderwerbsteuer = st.number_input("Grunderwerbsteuer %", min_value=0.0, max_value=15.0, value=3.5, step=0.1)
+notar = st.number_input("Notar %", min_value=0.0, max_value=10.0, value=1.5, step=0.1)
+grundbuch = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
+makler = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
+
+nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
+gesamtfinanzierung = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe
+darlehen1_summe = gesamtfinanzierung - eigenkapital
+
+st.subheader("Darlehen")
+st.info(f"**Automatisch berechnete Darlehenssumme:** {darlehen1_summe:,.2f} €")
+
+zins1 = st.number_input("Zins (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05)
+tilgung1_modus = st.selectbox("Tilgungsmodus", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
+if tilgung1_modus.startswith("Tilgungssatz"):
+    tilgung1 = st.number_input("Tilgung (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+    tilg_eur1, laufzeit1 = None, None
+elif tilgung1_modus.startswith("Tilgungsbetrag"):
+    tilg_eur1 = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+    tilgung1, laufzeit1 = None, None
+else:
+    laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1)
+    tilgung1, tilg_eur1 = None, None
+
+show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
+if show_darlehen2:
+    st.subheader("Darlehen II")
+    zins2 = st.number_input("Zins II (%)", min_value=0.0, max_value=10.0, value=0.0, step=0.05)
+    tilgung2_modus = st.selectbox("Tilgungsmodus II", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"])
+    if tilgung2_modus.startswith("Tilgungssatz"):
+        tilgung2 = st.number_input("Tilgung II (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+        tilg_eur2, laufzeit2 = None, None
+    elif tilgung2_modus.startswith("Tilgungsbetrag"):
+        tilg_eur2 = st.number_input("Tilgung II (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+        tilgung2, laufzeit2 = None, None
+    else:
+        laufzeit2 = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
+        tilgung2, tilg_eur2 = None, None
+else:
+    zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
+
+from immo_core import berechne_darlehen_details
+modus_d1 = 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit'
+d1 = berechne_darlehen_details(
+    darlehen1_summe, zins1, tilgung_p=tilgung1, tilgung_euro_mtl=tilg_eur1, laufzeit_jahre=laufzeit1, modus=modus_d1
+)
+st.markdown(
+    f"""
+    **Darlehen Übersicht:**
+    - Darlehenssumme: **{darlehen1_summe:,.2f} €**
+    - Rate: **{d1['monatsrate']:,.2f} €**
+    - Laufzeit: **{d1['laufzeit_jahre']:.1f} Jahre**
+    - Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**
+    """
+)
+if show_darlehen2:
+    d2 = berechne_darlehen_details(
+        0, zins2, tilgung_p=tilgung2, tilgung_euro_mtl=tilg_eur2, laufzeit_jahre=laufzeit2,
+        modus=('tilgungssatz' if tilgung2_modus and tilgung2_modus.startswith("Tilgungssatz")
+               else 'tilgung_euro' if tilgung2_modus and tilgung2_modus.startswith("Tilgungsbetrag")
+               else 'laufzeit')
     )
+    st.markdown(
+        f"""
+        **Darlehen II Übersicht:**
+        - Rate: **{d2['monatsrate']:,.2f} €**
+        - Laufzeit: **{d2['laufzeit_jahre']:.1f} Jahre**
+        - Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**
+        """
+    )
+
+st.markdown("---")
+
+# 3. Laufende Posten & Steuer
+st.header("3. Laufende Posten & Steuer")
+if nutzungsart == "Vermietung":
+    kaltmiete_monatlich = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
+    umlagefaehige_monat = st.number_input("Umlagefähige Kosten (€ mtl.)", min_value=0, max_value=1_000, value=150, step=10)
+    nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10_000, value=960, step=10)
+else:
+    kaltmiete_monatlich = 0
+    umlagefaehige_monat = 0
+    nicht_umlagefaehige_pa = st.number_input("Laufende Kosten p.a. (Hausgeld etc.)", min_value=0, max_value=10_000, value=960, step=10)
+
+steuersatz = st.number_input("Persönl. Steuersatz (%)", min_value=0.0, max_value=100.0, value=42.0, step=0.5)
+
+st.subheader("Persönliche Finanzsituation")
+verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
+st.markdown("---")
+
+# Interaktive Checkliste-Status speichern (nur EINMAL pro Key!)
+if 'checklist_status' not in st.session_state:
+    st.session_state['checklist_status'] = {}
+for item in checklist_items:
+    st.session_state['checklist_status'][item] = st.checkbox(item, key=f"check_{item}", value=st.session_state['checklist_status'].get(item, False))
+
+inputs = {
+    'wohnort': wohnort,
+    'baujahr_kategorie': baujahr,
+    'wohnflaeche_qm': wohnflaeche_qm,
+    'stockwerk': stockwerk,
+    'zimmeranzahl': zimmeranzahl,
+    'energieeffizienz': energieeffizienz,
+    'oepnv_anbindung': oepnv_anbindung,
+    'besonderheiten': besonderheiten,
+    'kaufpreis': kaufpreis,
+    'garage_stellplatz_kosten': garage_stellplatz,
+    'invest_bedarf': invest_bedarf,
+    'eigenkapital': eigenkapital,
+    'nebenkosten_prozente': {
+        'grunderwerbsteuer': grunderwerbsteuer,
+        'notar': notar,
+        'grundbuch': grundbuch,
+        'makler': makler
+    },
+    'nutzungsart': nutzungsart,
+    'zins1_prozent': zins1,
+    'modus_d1': modus_d1,
+    'tilgung1_prozent': tilgung1 if tilgung1_modus.startswith("Tilgungssatz") else None,
+    'tilgung1_euro_mtl': tilg_eur1 if tilgung1_modus.startswith("Tilgungsbetrag") else None,
+    'laufzeit1_jahre': laufzeit1 if tilgung1_modus.startswith("Laufzeit") else None,
+    'darlehen2_summe': 0,
+    'zins2_prozent': zins2,
+    'modus_d2': ('tilgungssatz' if tilgung2_modus and tilgung2_modus.startswith("Tilgungssatz")
+                 else 'tilgung_euro' if tilgung2_modus and tilgung2_modus.startswith("Tilgungsbetrag")
+                 else 'laufzeit'),
+    'tilgung2_prozent': tilgung2,
+    'tilgung2_euro_mtl': tilg_eur2,
+    'laufzeit2_jahre': laufzeit2,
+    'kaltmiete_monatlich': kaltmiete_monatlich,
+    'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
+    'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
+    'steuersatz': steuersatz,
+    'verfuegbares_einkommen_mtl': verfuegbares_einkommen,
+    'checklist_status': st.session_state['checklist_status']
+}
+
+if 'results' not in st.session_state:
+    st.session_state['results'] = None
+if 'pdf_bytes' not in st.session_state:
+    st.session_state['pdf_bytes'] = None
+
+if st.button("Analyse berechnen"):
+    results = immo_core.calculate_analytics(inputs)
+    if 'error' in results:
+        st.session_state['results'] = None
+        st.error(results['error'])
+    else:
+        st.session_state['results'] = results
+
+results = st.session_state['results']
+
+if results:
+    st.subheader("Ergebnisse")
+
+    if nutzungsart == "Vermietung":
+        all_keys = [
+            "Einnahmen p.a. (Kaltmiete)",
+            "Umlagefähige Kosten p.a.",
+            "Nicht umlagef. Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.",
+            "- AfA p.a.",
+            "- Absetzbare Kaufnebenkosten (Jahr 1)",
+            "= Steuerlicher Gewinn/Verlust p.a.",
+            "+ Steuerersparnis / -last p.a.",
+            "= Effektiver Cashflow n. St. p.a.",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
+    else:
+        all_keys = [
+            "Laufende Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
+
+    col1, col2, col3 = st.columns([2.5, 2.5, 1])
+    with col1:
+        st.markdown("#### Jahr der Anschaffung (€)")
+        for key in all_keys:
+            val = next((r['val1'] for r in results['display_table'] if key in r['kennzahl']), "")
+            if val != "":
+                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                st.markdown(
+                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) and val != "" else f"<div style='{style}'>{key}: {val}</div>",
+                    unsafe_allow_html=True
+                )
+    with col2:
+        st.markdown("#### Laufende Jahre (€)")
+        for key in all_keys:
+            val = next((r['val2'] for r in results['display_table'] if key in r['kennzahl']), "")
+            if val != "":
+                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                st.markdown(
+                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) and val != "" else f"<div style='{style}'>{key}: {val}</div>",
+                    unsafe_allow_html=True
+                )
+    with col3:
+        ek = eigenkapital
+        fk = gesamtfinanzierung - eigenkapital
+        labels = ['Eigenkapital', 'Darlehen']
+        sizes = [ek, fk]
+        colors = ['#4e79a7', '#f28e2b']
+        fig, ax = plt.subplots(figsize=(1, 1))  # Sehr kompakt
+        wedges, texts, autotexts = ax.pie(
+            sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+            startangle=90, counterclock=False, textprops={'fontsize': 8}
+        )
+        ax.axis('equal')
+        ax.set_title('Finanzierungsstruktur', fontsize=9)
+        st.pyplot(fig)
+    st.markdown("---")
+
+    # 4. Checkliste (NUR EINMAL pro Key!)
+    st.header("4. Checkliste: Wichtige Dokumente für den Immobilienkauf")
+    for item in checklist_items:
+        st.checkbox(item, key=f"check_{item}", value=st.session_state['checklist_status'].get(item, False))
+
+    st.markdown("---")
+    st.subheader("Bericht als PDF exportieren")
+    if st.button("PDF-Bericht erstellen"):
+        pdf_bytes = create_pdf_report(results, inputs, checklist_items)
+        st.session_state['pdf_bytes'] = pdf_bytes
+        st.success("PDF wurde erstellt. Klicke unten zum Herunterladen:")
+    if st.session_state['pdf_bytes']:
+        st.download_button(
+            label="PDF herunterladen",
+            data=st.session_state['pdf_bytes'],
+            file_name="Immo_Bericht.pdf",
+            mime="application/pdf"
+        )
