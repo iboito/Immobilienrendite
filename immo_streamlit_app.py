@@ -8,21 +8,23 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
-# --- PDF-Funktion mit Unicode-fähiger Schrift ---
+# --- PDF-Funktion mit Unicode und Bold ---
 def create_pdf_report(results, inputs):
     pdf = FPDF()
     pdf.add_page()
-    pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
-    pdf.set_font("DejaVu", size=14)
+    # Registriere Regular und Bold unter demselben Familiennamen!
+    pdf.add_font("DejaVuSans", "", "DejaVuSans.ttf")
+    pdf.add_font("DejaVuSans", "B", "DejaVuSans-Bold.ttf")
+    pdf.set_font("DejaVuSans", size=14)
     pdf.cell(0, 10, "Immobilien-Analyse Bericht", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
-    pdf.set_font("DejaVu", size=11)
+    pdf.set_font("DejaVuSans", size=11)
     pdf.ln(4)
     pdf.cell(0, 10, f"Wohnort: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.cell(0, 10, f"Nutzungsart: {inputs.get('nutzungsart','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
-    pdf.set_font("DejaVu", style='B', size=12)
+    pdf.set_font("DejaVuSans", style="B", size=12)
     pdf.cell(0, 10, "Wichtigste Kennzahlen:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("DejaVu", size=11)
+    pdf.set_font("DejaVuSans", size=11)
     if results and 'display_table' in results:
         for row in results['display_table']:
             kennzahl = row.get('kennzahl', '')
@@ -30,9 +32,9 @@ def create_pdf_report(results, inputs):
             val2 = row.get('val2', '')
             pdf.cell(0, 8, f"{kennzahl}: {val1} (Jahr 1), {val2} (Folgejahre)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
-    pdf.set_font("DejaVu", style='B', size=12)
+    pdf.set_font("DejaVuSans", style="B", size=12)
     pdf.cell(0, 10, "Checkliste:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("DejaVu", size=11)
+    pdf.set_font("DejaVuSans", size=11)
     checklist = [
         "Grundbuchauszug",
         "Flurkarte",
