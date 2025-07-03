@@ -26,8 +26,8 @@ nutzungsart = st.selectbox(
 )
 st.markdown("---")
 
-# 1. Objekt
-st.header("1. Objekt")
+# 1. Objekt & Investition
+st.header("1. Objekt & Investition")
 wohnort = st.text_input("Wohnort", "Nürnberg")
 baujahr = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
 wohnflaeche_qm = st.number_input("Wohnfläche (qm)", min_value=10, max_value=500, value=80)
@@ -255,6 +255,25 @@ if st.button("Analyse berechnen"):
             st.pyplot(fig)
         st.markdown("---")
 
+        # 4. Checkliste
+        st.header("4. Checkliste: Wichtige Dokumente für den Immobilienkauf")
+        checklist = [
+            "Grundbuchauszug",
+            "Flurkarte",
+            "Energieausweis",
+            "Teilungserklärung & Gemeinschaftsordnung",
+            "Protokolle der letzten 3–5 Eigentümerversammlungen",
+            "Jahresabrechnung & Wirtschaftsplan",
+            "Höhe der Instandhaltungsrücklage",
+            "Exposé & Grundrisse",
+            "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
+        ]
+        if nutzungsart == "Vermietung":
+            checklist.append("Bei vermieteter Wohnung: Mietvertrag")
+        for item in checklist:
+            st.markdown(f"- [ ] {item}")
+
+        st.markdown("---")
         # --- PDF Export ---
         st.subheader("Bericht als PDF exportieren")
         if st.button("PDF-Bericht erstellen"):
