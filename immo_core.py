@@ -123,7 +123,6 @@ def calculate_analytics(inputs):
     zinsen_pa = d1['zins_pa'] + d2['zins_pa']
     tilgung_pa = d1['tilgung_pa'] + d2['tilgung_pa']
     bankrate_pa = zinsen_pa + tilgung_pa
-
     nutzungsart = inputs.get('nutzungsart', 'Vermietung')
     nicht_umlagefaehige = inputs.get('nicht_umlagefaehige_kosten_pa', 0)
     verfuegbares_einkommen = inputs.get('verfuegbares_einkommen_mtl', 0)
@@ -141,7 +140,6 @@ def calculate_analytics(inputs):
         # AfA-Satz ermitteln
         baujahr = inputs.get('baujahr_kategorie', '1925 - 2022')
         afa_satz = 2.5 if baujahr == 'vor 1925' else 3.0 if baujahr == 'ab 2023' else 2.0
-
         kaltmiete_pa = inputs.get('kaltmiete_monatlich', 0) * 12
         cashflow_vor_steuern = kaltmiete_pa - nicht_umlagefaehige - bankrate_pa
         afa_pa = kaufpreis * (afa_satz / 100)
@@ -152,7 +150,10 @@ def calculate_analytics(inputs):
         steuer_laufend = -gewinn_laufend * (inputs.get('steuersatz', 42.0) / 100)
         cashflow_n_st_jahr1 = cashflow_vor_steuern + steuer_jahr1
         cashflow_n_st_laufend = cashflow_vor_steuern + steuer_laufend
-        neues_einkommen = verfuegbares_einkommen + (cashflow_n_st_laufend / 12)
+
+        # NEU: Neues verfügbares Einkommen für beide Jahre berechnen
+        neues_einkommen_jahr1 = verfuegbares_einkommen + (cashflow_n_st_jahr1 / 12)
+        neues_einkommen_laufend = verfuegbares_einkommen + (cashflow_n_st_laufend / 12)
 
         # Anzeige-Tabelle aufbauen
         display_table.extend([
@@ -173,15 +174,17 @@ def calculate_analytics(inputs):
             {'kennzahl': ' = Effektiver Cashflow n. St. p.a.', 'val1': cashflow_n_st_jahr1, 'val2': cashflow_n_st_laufend, 'tags': ['bold']},
             {'kennzahl': '---', 'val1': None, 'val2': None, 'tags': ['separator']},
             {'kennzahl': 'Gesamt-Cashflow (Ihre persönliche Situation)', 'val1': None, 'val2': None, 'tags': ['title']},
-            {'kennzahl': ' Ihr monatl. Einkommen (vorher)', 'val1': None, 'val2': verfuegbares_einkommen, 'tags': []},
-            {'kennzahl': ' +/- Mtl. Cashflow Immobilie', 'val1': None, 'val2': cashflow_n_st_laufend / 12, 'tags': []},
-            {'kennzahl': ' = Neues verfügbares Einkommen', 'val1': None, 'val2': neues_einkommen, 'tags': ['bold', 'green_text' if neues_einkommen >= verfuegbares_einkommen else 'red_text']}
+            {'kennzahl': ' Ihr monatl. Einkommen (vorher)', 'val1': verfuegbares_einkommen, 'val2': verfuegbares_einkommen, 'tags': []},
+            {'kennzahl': ' +/- Mtl. Cashflow Immobilie', 'val1': cashflow_n_st_jahr1 / 12, 'val2': cashflow_n_st_laufend / 12, 'tags': []},
+            # HIER: Beide Jahre werden korrekt ausgegeben!
+            {'kennzahl': ' = Neues verfügbares Einkommen', 'val1': neues_einkommen_jahr1, 'val2': neues_einkommen_laufend, 'tags': ['bold', 'green_text' if neues_einkommen_laufend >= verfuegbares_einkommen else 'red_text']}
         ])
 
         # KPIs
         bruttomietrendite = (kaltmiete_pa / kaufpreis) * 100
         nettomietrendite = ((kaltmiete_pa - nicht_umlagefaehige) / gesamtinvestition) * 100
         ek_rendite = (cashflow_n_st_laufend / eigenkapital) * 100 if eigenkapital > 0 else 0
+
         kpi_table = [
             {'Kennzahl': 'Bruttomietrendite', 'Wert': f"{bruttomietrendite:.2f} %"},
             {'Kennzahl': 'Nettomietrendite', 'Wert': f"{nettomietrendite:.2f} %"},
@@ -199,7 +202,6 @@ def calculate_analytics(inputs):
     else:  # Eigennutzung
         jaehrliche_kosten = bankrate_pa + nicht_umlagefaehige
         neues_einkommen = verfuegbares_einkommen - (jaehrliche_kosten / 12)
-
         display_table.extend([
             {'kennzahl': 'Rückzahlung Darlehen p.a.', 'val1': -bankrate_pa, 'val2': -bankrate_pa, 'tags': []},
             {'kennzahl': 'Laufende Kosten p.a.', 'val1': -nicht_umlagefaehige, 'val2': -nicht_umlagefaehige, 'tags': []},
@@ -207,9 +209,9 @@ def calculate_analytics(inputs):
             {'kennzahl': 'Jährliche Gesamtkosten', 'val1': -jaehrliche_kosten, 'val2': -jaehrliche_kosten, 'tags': ['bold']},
             {'kennzahl': '---', 'val1': None, 'val2': None, 'tags': ['separator']},
             {'kennzahl': 'Gesamt-Cashflow (Ihre persönliche Situation)', 'val1': None, 'val2': None, 'tags': ['title']},
-            {'kennzahl': ' Ihr monatl. Einkommen (vorher)', 'val1': None, 'val2': verfuegbares_einkommen, 'tags': []},
-            {'kennzahl': ' - Mtl. Kosten Immobilie', 'val1': None, 'val2': -jaehrliche_kosten / 12, 'tags': []},
-            {'kennzahl': ' = Neues verfügbares Einkommen', 'val1': None, 'val2': neues_einkommen, 'tags': ['bold', 'green_text' if neues_einkommen >= verfuegbares_einkommen else 'red_text']}
+            {'kennzahl': ' Ihr monatl. Einkommen (vorher)', 'val1': verfuegbares_einkommen, 'val2': verfuegbares_einkommen, 'tags': []},
+            {'kennzahl': ' - Mtl. Kosten Immobilie', 'val1': -jaehrliche_kosten / 12, 'val2': -jaehrliche_kosten / 12, 'tags': []},
+            {'kennzahl': ' = Neues verfügbares Einkommen', 'val1': neues_einkommen, 'val2': neues_einkommen, 'tags': ['bold', 'green_text' if neues_einkommen >= verfuegbares_einkommen else 'red_text']}
         ])
 
         # KPIs
