@@ -42,14 +42,14 @@ notar                 = st.number_input("Notar %", min_value=0.0, max_value=10.0
 grundbuch             = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
 makler                = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
 
-# Checkbox für Darlehen II
+# Checkbox für Darlehen II kommt jetzt VOR die Felder
 show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
 
 # Dynamische Labels für Darlehen I
 darlehen1_label = "Darlehen" if not show_darlehen2 else "Darlehen I"
 zins1_label = "Zins (%)" if not show_darlehen2 else "Zins I (%)"
-tilgung1_label = "Tilgung (%)" if not show_darlehen2 else "Tilgung I (%)"
 tilgung1_modus_label = "Tilgungsmodus" if not show_darlehen2 else "Tilgungsmodus I"
+tilgung1_label = "Tilgung (%)" if not show_darlehen2 else "Tilgung I (%)"
 
 st.subheader(darlehen1_label)
 zins1 = st.number_input(zins1_label, min_value=0.0, max_value=10.0, value=3.5, step=0.05)
