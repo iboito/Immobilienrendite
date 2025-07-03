@@ -71,9 +71,8 @@ if show_darlehen2:
 else:
     tilgung2 = tilg_eur2 = laufzeit2 = None
 
-# --- LIVE Darlehensdetails wie in der GUI ---
+# LIVE Darlehensdetails wie in der GUI
 from immo_core import berechne_darlehen_details
-# Darlehen I
 nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
 darlehen1_summe = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe - eigenkapital
 modus_d1 = 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit'
@@ -92,7 +91,6 @@ st.markdown(
     f"- Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**"
 )
 
-# Darlehen II (optional)
 if show_darlehen2:
     d2 = berechne_darlehen_details(
         0, zins2,
