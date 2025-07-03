@@ -53,7 +53,8 @@ makler = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, 
 
 # Darlehenssumme automatisch berechnen
 nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
-darlehen1_summe = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe - eigenkapital
+gesamtfinanzierung = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe
+darlehen1_summe = gesamtfinanzierung - eigenkapital
 
 st.subheader("Darlehen")
 st.info(f"**Automatisch berechnete Darlehenssumme:** {darlehen1_summe:,.2f} €")
@@ -189,8 +190,10 @@ if st.button("Analyse berechnen"):
         if nutzungsart == "Vermietung":
             all_keys = [
                 "Einnahmen p.a. (Kaltmiete)",
+                "Umlagefähige Kosten p.a.",
                 "Nicht umlagef. Kosten p.a.",
                 "Rückzahlung Darlehen p.a.",
+                "Gesamtkosten p.a.",
                 "= Cashflow vor Steuern p.a.",
                 "- Zinsen p.a.",
                 "- AfA p.a.",
@@ -205,14 +208,11 @@ if st.button("Analyse berechnen"):
             ]
         else:  # Eigennutzung
             all_keys = [
-                "Nicht umlagef. Kosten p.a.",
+                "Laufende Kosten p.a.",
                 "Rückzahlung Darlehen p.a.",
-                "= Cashflow vor Steuern p.a.",
-                "- Zinsen p.a.",
-                "= Effektiver Cashflow n. St. p.a.",
-                "Gesamt-Cashflow (Ihre persönliche Si)",
+                "Gesamtkosten p.a.",
+                "= Effektiver Eigenaufwand p.a.",
                 "Ihr monatl. Einkommen (vorher)",
-                "+/- Mtl. Cashflow Immobilie",
                 "= Neues verfügbares Einkommen"
             ]
 
@@ -242,18 +242,17 @@ if st.button("Analyse berechnen"):
                     st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
         st.markdown("---")
 
-        # --- Cashflow-Grafik ---
-        jahres_cashflows = results.get('jahres_cashflows') or results.get('cashflow_jahre')
-        if jahres_cashflows:
-            jahre = list(range(1, len(jahres_cashflows) + 1))
-            fig, ax = plt.subplots()
-            ax.bar(jahre, jahres_cashflows, color="#4e79a7")
-            ax.set_xlabel("Jahr")
-            ax.set_ylabel("Cashflow (€)")
-            ax.set_title("Cashflow-Entwicklung über die Jahre")
-            st.pyplot(fig)
-        else:
-            st.info("Keine Cashflow-Daten für die Grafik vorhanden.")
+        # --- Finanzierungsstruktur-Grafik ---
+        ek = eigenkapital
+        fk = gesamtfinanzierung - eigenkapital
+        labels = ['Eigenkapital', 'Darlehen']
+        sizes = [ek, fk]
+        colors = ['#4e79a7', '#f28e2b']
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, counterclock=False)
+        ax.axis('equal')
+        ax.set_title('Finanzierungsstruktur: Eigenkapital vs. Darlehen')
+        st.pyplot(fig)
         st.markdown("---")
 
         # --- PDF Export ---
