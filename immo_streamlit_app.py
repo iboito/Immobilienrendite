@@ -27,7 +27,7 @@ energieeffizienz   = st.selectbox("Energieeffizienz", ["A+","A","B","C","D","E",
 oepnv_anbindung    = st.selectbox("ÖPNV-Anbindung", ["Sehr gut","Gut","Okay"])
 besonderheiten     = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 
-st.markdown("---")  # << Trennlinie vor Abschnitt 2
+st.markdown("---")
 
 # 2. Finanzierung
 st.header("2. Finanzierung")
@@ -42,34 +42,43 @@ notar                 = st.number_input("Notar %", min_value=0.0, max_value=10.0
 grundbuch             = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
 makler                = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
 
-st.subheader("Darlehen I")
-zins1                 = st.number_input("Zins I (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05)
-tilgung1_modus        = st.selectbox("Tilgungsmodus I", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
-if tilgung1_modus == "Tilgungssatz (%)":
-    tilgung1          = st.number_input("Tilgung I (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+# Checkbox für Darlehen II
+show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
+
+# Dynamische Labels für Darlehen I
+darlehen1_label = "Darlehen" if not show_darlehen2 else "Darlehen I"
+zins1_label = "Zins (%)" if not show_darlehen2 else "Zins I (%)"
+tilgung1_label = "Tilgung (%)" if not show_darlehen2 else "Tilgung I (%)"
+tilgung1_modus_label = "Tilgungsmodus" if not show_darlehen2 else "Tilgungsmodus I"
+
+st.subheader(darlehen1_label)
+zins1 = st.number_input(zins1_label, min_value=0.0, max_value=10.0, value=3.5, step=0.05)
+tilgung1_modus = st.selectbox(tilgung1_modus_label, ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
+if tilgung1_modus.startswith("Tilgungssatz"):
+    tilgung1 = st.number_input(tilgung1_label, min_value=0.0, max_value=10.0, value=2.0, step=0.1)
     tilg_eur1, laufzeit1 = None, None
-elif tilgung1_modus == "Tilgungsbetrag (€ mtl.)":
-    tilg_eur1         = st.number_input("Tilgung I (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+elif tilgung1_modus.startswith("Tilgungsbetrag"):
+    tilg_eur1 = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
     tilgung1, laufzeit1 = None, None
 else:
-    laufzeit1         = st.number_input("Laufzeit I (Jahre)", min_value=1, max_value=50, value=25, step=1)
+    laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1)
     tilgung1, tilg_eur1 = None, None
 
-show_darlehen2         = st.checkbox("Weiteres Darlehen hinzufügen")
-zins2                 = st.number_input("Zins II (%)", min_value=0.0, max_value=10.0, value=0.0, step=0.05, disabled=not show_darlehen2)
-tilgung2_modus        = st.selectbox("Tilgungsmodus II", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], disabled=not show_darlehen2)
 if show_darlehen2:
-    if tilgung2_modus == "Tilgungssatz (%)":
-        tilgung2       = st.number_input("Tilgung II (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+    st.subheader("Darlehen II")
+    zins2 = st.number_input("Zins II (%)", min_value=0.0, max_value=10.0, value=0.0, step=0.05)
+    tilgung2_modus = st.selectbox("Tilgungsmodus II", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"])
+    if tilgung2_modus.startswith("Tilgungssatz"):
+        tilgung2 = st.number_input("Tilgung II (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
         tilg_eur2, laufzeit2 = None, None
-    elif tilgung2_modus == "Tilgungsbetrag (€ mtl.)":
-        tilg_eur2      = st.number_input("Tilgung II (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+    elif tilgung2_modus.startswith("Tilgungsbetrag"):
+        tilg_eur2 = st.number_input("Tilgung II (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
         tilgung2, laufzeit2 = None, None
     else:
-        laufzeit2      = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
+        laufzeit2 = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
         tilgung2, tilg_eur2 = None, None
 else:
-    tilgung2 = tilg_eur2 = laufzeit2 = None
+    zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
 
 # LIVE Darlehensdetails wie in der GUI
 from immo_core import berechne_darlehen_details
@@ -83,7 +92,7 @@ d1 = berechne_darlehen_details(
     laufzeit_jahre=laufzeit1,
     modus=modus_d1
 )
-st.markdown("**Darlehen I Übersicht:**")
+st.markdown(f"**{darlehen1_label} Übersicht:**")
 st.markdown(
     f"- Darlehenssumme: **{darlehen1_summe:,.2f} €**  \n"
     f"- Rate: **{d1['monatsrate']:,.2f} €**  \n"
@@ -97,8 +106,8 @@ if show_darlehen2:
         tilgung_p=tilgung2,
         tilgung_euro_mtl=tilg_eur2,
         laufzeit_jahre=laufzeit2,
-        modus=('tilgungssatz' if tilgung2_modus.startswith("Tilgungssatz")
-               else 'tilgung_euro' if tilgung2_modus.startswith("Tilgungsbetrag")
+        modus=('tilgungssatz' if tilgung2_modus and tilgung2_modus.startswith("Tilgungssatz")
+               else 'tilgung_euro' if tilgung2_modus and tilgung2_modus.startswith("Tilgungsbetrag")
                else 'laufzeit')
     )
     st.markdown("**Darlehen II Übersicht:**")
@@ -108,7 +117,7 @@ if show_darlehen2:
         f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**"
     )
 
-st.markdown("---")  # << Trennlinie vor Abschnitt 3
+st.markdown("---")
 
 # 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
@@ -120,7 +129,7 @@ steuersatz             = st.number_input("Persönl. Steuersatz (%)", min_value=0
 st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 
-st.markdown("---")  # << Trennlinie vor Ergebnissen
+st.markdown("---")
 
 st.subheader("Ergebnisse")
 inputs = {
@@ -150,8 +159,8 @@ inputs = {
     'laufzeit1_jahre': laufzeit1,
     'darlehen2_summe': 0,
     'zins2_prozent': zins2,
-    'modus_d2': ('tilgungssatz' if tilgung2_modus.startswith("Tilgungssatz")
-                 else 'tilgung_euro' if tilgung2_modus.startswith("Tilgungsbetrag")
+    'modus_d2': ('tilgungssatz' if tilgung2_modus and tilgung2_modus.startswith("Tilgungssatz")
+                 else 'tilgung_euro' if tilgung2_modus and tilgung2_modus.startswith("Tilgungsbetrag")
                  else 'laufzeit'),
     'tilgung2_prozent': tilgung2,
     'tilgung2_euro_mtl': tilg_eur2,
