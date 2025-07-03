@@ -30,7 +30,7 @@ def is_number(val):
     except:
         return False
 
-def create_pdf_report(results, inputs):
+def create_pdf_report(results, inputs, checklist_items):
     pdf = FPDF()
     pdf.add_page()
     pdf.add_font("DejaVuSans", "", "DejaVuSans.ttf")
@@ -202,26 +202,13 @@ def create_pdf_report(results, inputs):
             pdf.cell(80, 7, k, border=1)
             pdf.cell(35, 7, str(v), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    # 5. Checkliste mit Checkboxen
+    # 5. Checkliste mit Checkboxen (Status nur auslesen, NIE Checkbox-Widget im PDF-Block!)
     pdf.ln(3)
     pdf.set_font("DejaVuSans", "B", 12)
     pdf.cell(0, 8, "5. Checkliste: Wichtige Dokumente", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "", 10)
-    checklist = [
-        "Grundbuchauszug",
-        "Flurkarte",
-        "Energieausweis",
-        "Teilungserklärung & Gemeinschaftsordnung",
-        "Protokolle der letzten 3–5 Eigentümerversammlungen",
-        "Jahresabrechnung & Wirtschaftsplan",
-        "Höhe der Instandhaltungsrücklage",
-        "Exposé & Grundrisse",
-        "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
-    ]
-    if inputs.get("nutzungsart") == "Vermietung":
-        checklist.append("Bei vermieteter Wohnung: Mietvertrag")
     checklist_status = inputs.get("checklist_status", {})
-    for item in checklist:
+    for item in checklist_items:
         checked = checklist_status.get(item, False)
         box = "☑" if checked else "☐"
         pdf.cell(0, 7, f"{box} {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
@@ -358,20 +345,6 @@ verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)",
 st.markdown("---")
 
 # Interaktive Checkliste-Status speichern (nur EINMAL pro Key!)
-checklist_items = [
-    "Grundbuchauszug",
-    "Flurkarte",
-    "Energieausweis",
-    "Teilungserklärung & Gemeinschaftsordnung",
-    "Protokolle der letzten 3–5 Eigentümerversammlungen",
-    "Jahresabrechnung & Wirtschaftsplan",
-    "Höhe der Instandhaltungsrücklage",
-    "Exposé & Grundrisse",
-    "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
-]
-if nutzungsart == "Vermietung":
-    checklist_items.append("Bei vermieteter Wohnung: Mietvertrag")
-
 if 'checklist_status' not in st.session_state:
     st.session_state['checklist_status'] = {}
 for item in checklist_items:
@@ -504,7 +477,7 @@ if results:
         st.pyplot(fig)
     st.markdown("---")
 
-    # 4. Checkliste
+    # 4. Checkliste (NUR EINMAL pro Key!)
     st.header("4. Checkliste: Wichtige Dokumente für den Immobilienkauf")
     for item in checklist_items:
         st.checkbox(item, key=f"check_{item}", value=st.session_state['checklist_status'].get(item, False))
@@ -512,7 +485,7 @@ if results:
     st.markdown("---")
     st.subheader("Bericht als PDF exportieren")
     if st.button("PDF-Bericht erstellen"):
-        pdf_bytes = create_pdf_report(results, inputs)
+        pdf_bytes = create_pdf_report(results, inputs, checklist_items)
         st.session_state['pdf_bytes'] = pdf_bytes
         st.success("PDF wurde erstellt. Klicke unten zum Herunterladen:")
     if st.session_state['pdf_bytes']:
