@@ -217,28 +217,35 @@ if st.button("Analyse berechnen"):
                 "= Neues verfügbares Einkommen"
             ]
 
-        # Tabelle und Grafik nebeneinander
-        tcol, gcol = st.columns([2.5, 1])
-        with tcol:
+        # 3-Spalten-Layout: Anschaffungsjahr | Laufende Jahre | Grafik
+        col1, col2, col3 = st.columns([2.5, 2.5, 1])
+        with col1:
             st.markdown("#### Jahr der Anschaffung (€)")
             for key in all_keys:
                 val = next((r['val1'] for r in results['display_table'] if key in r['kennzahl']), "")
                 if val != "":
                     style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
-                    st.markdown(f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
+                        unsafe_allow_html=True
+                    )
+        with col2:
             st.markdown("#### Laufende Jahre (€)")
             for key in all_keys:
                 val = next((r['val2'] for r in results['display_table'] if key in r['kennzahl']), "")
                 if val != "":
                     style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
-                    st.markdown(f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
-        with gcol:
+                    st.markdown(
+                        f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
+                        unsafe_allow_html=True
+                    )
+        with col3:
             ek = eigenkapital
             fk = gesamtfinanzierung - eigenkapital
             labels = ['Eigenkapital', 'Darlehen']
             sizes = [ek, fk]
             colors = ['#4e79a7', '#f28e2b']
-            fig, ax = plt.subplots(figsize=(1, 1))  # Noch kompakter!
+            fig, ax = plt.subplots(figsize=(1, 1))  # Sehr kompakt
             wedges, texts, autotexts = ax.pie(
                 sizes, labels=labels, colors=colors, autopct='%1.1f%%',
                 startangle=90, counterclock=False, textprops={'fontsize': 8}
