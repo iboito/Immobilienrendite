@@ -17,8 +17,8 @@ except Exception:
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
 
-# 1. Objekt & Investition
-st.header("1. Objekt & Investition")
+# 1. Objekt
+st.header("1. Objekt")
 wohnort            = st.text_input("Wohnort", "Nürnberg")
 baujahr            = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
 wohnflaeche_qm     = st.number_input("Wohnfläche (qm)", min_value=10, max_value=500, value=80)
