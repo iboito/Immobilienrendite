@@ -42,10 +42,10 @@ notar                 = st.number_input("Notar %", min_value=0.0, max_value=10.0
 grundbuch             = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
 makler                = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
 
-# Checkbox vor die Felder!
+# --- Die Checkbox steht jetzt VOR den Feldern! ---
 show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
 
-# Feste Labels für das erste Darlehen
+# Feste Labels für das erste Darlehen – nie ein "I"
 st.subheader("Darlehen")
 zins1 = st.number_input("Zins (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05)
 tilgung1_modus = st.selectbox("Tilgungsmodus", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
