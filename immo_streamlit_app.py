@@ -4,6 +4,7 @@ from PIL import Image
 import immo_core
 import pdf_generator
 import base64
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
@@ -183,22 +184,38 @@ if st.button("Analyse berechnen"):
         st.error(results['error'])
     else:
         st.subheader("Ergebnisse")
-        all_keys = [
-            "Einnahmen p.a. (Kaltmiete)",
-            "Nicht umlagef. Kosten p.a.",
-            "Rückzahlung Darlehen p.a.",
-            "= Cashflow vor Steuern p.a.",
-            "- Zinsen p.a.",
-            "- AfA p.a.",
-            "- Absetzbare Kaufnebenkosten (Jahr 1)",
-            "= Steuerlicher Gewinn/Verlust p.a.",
-            "+ Steuerersparnis / -last p.a.",
-            "= Effektiver Cashflow n. St. p.a.",
-            "Gesamt-Cashflow (Ihre persönliche Si)",
-            "Ihr monatl. Einkommen (vorher)",
-            "+/- Mtl. Cashflow Immobilie",
-            "= Neues verfügbares Einkommen"
-        ]
+
+        # Unterschiedliche Kennzahlen je nach Nutzungsart
+        if nutzungsart == "Vermietung":
+            all_keys = [
+                "Einnahmen p.a. (Kaltmiete)",
+                "Nicht umlagef. Kosten p.a.",
+                "Rückzahlung Darlehen p.a.",
+                "= Cashflow vor Steuern p.a.",
+                "- Zinsen p.a.",
+                "- AfA p.a.",
+                "- Absetzbare Kaufnebenkosten (Jahr 1)",
+                "= Steuerlicher Gewinn/Verlust p.a.",
+                "+ Steuerersparnis / -last p.a.",
+                "= Effektiver Cashflow n. St. p.a.",
+                "Gesamt-Cashflow (Ihre persönliche Si)",
+                "Ihr monatl. Einkommen (vorher)",
+                "+/- Mtl. Cashflow Immobilie",
+                "= Neues verfügbares Einkommen"
+            ]
+        else:  # Eigennutzung
+            all_keys = [
+                "Nicht umlagef. Kosten p.a.",
+                "Rückzahlung Darlehen p.a.",
+                "= Cashflow vor Steuern p.a.",
+                "- Zinsen p.a.",
+                "= Effektiver Cashflow n. St. p.a.",
+                "Gesamt-Cashflow (Ihre persönliche Si)",
+                "Ihr monatl. Einkommen (vorher)",
+                "+/- Mtl. Cashflow Immobilie",
+                "= Neues verfügbares Einkommen"
+            ]
+
         def get_val(key, col):
             row = next((r for r in results['display_table'] if key in r['kennzahl']), None)
             if row:
@@ -207,6 +224,7 @@ if st.button("Analyse berechnen"):
                     return f"{val:,.2f} €"
                 return val
             return ""
+
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("#### Jahr der Anschaffung (€)")
@@ -222,6 +240,20 @@ if st.button("Analyse berechnen"):
                 if val != "":
                     style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
                     st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
+        st.markdown("---")
+
+        # --- Cashflow-Grafik ---
+        jahres_cashflows = results.get('jahres_cashflows') or results.get('cashflow_jahre')
+        if jahres_cashflows:
+            jahre = list(range(1, len(jahres_cashflows) + 1))
+            fig, ax = plt.subplots()
+            ax.bar(jahre, jahres_cashflows, color="#4e79a7")
+            ax.set_xlabel("Jahr")
+            ax.set_ylabel("Cashflow (€)")
+            ax.set_title("Cashflow-Entwicklung über die Jahre")
+            st.pyplot(fig)
+        else:
+            st.info("Keine Cashflow-Daten für die Grafik vorhanden.")
         st.markdown("---")
 
         # --- PDF Export ---
