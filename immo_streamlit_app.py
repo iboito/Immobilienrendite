@@ -270,14 +270,24 @@ if st.button("Analyse berechnen"):
         ]
         if nutzungsart == "Vermietung":
             checklist.append("Bei vermieteter Wohnung: Mietvertrag")
+        checked_states = []
         for item in checklist:
-            st.markdown(f"- [ ] {item}")
+            checked = st.checkbox(item, key=f"check_{item}")
+            checked_states.append(checked)
 
         st.markdown("---")
         # --- PDF Export ---
         st.subheader("Bericht als PDF exportieren")
+        if 'pdf_bytes' not in st.session_state:
+            st.session_state['pdf_bytes'] = None
         if st.button("PDF-Bericht erstellen"):
             pdf_bytes = pdf_generator.create_bank_report_streamlit(results, inputs)
-            b64 = base64.b64encode(pdf_bytes).decode()
-            href = f'<a href="data:application/octet-stream;base64,{b64}" download="Immo_Bericht.pdf">PDF herunterladen</a>'
-            st.markdown(href, unsafe_allow_html=True)
+            st.session_state['pdf_bytes'] = pdf_bytes
+            st.success("PDF wurde erstellt. Klicke unten zum Herunterladen:")
+        if st.session_state['pdf_bytes']:
+            st.download_button(
+                label="PDF herunterladen",
+                data=st.session_state['pdf_bytes'],
+                file_name="Immo_Bericht.pdf",
+                mime="application/pdf"
+            )
