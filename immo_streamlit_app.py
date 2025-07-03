@@ -9,7 +9,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
-# --- CHECKLISTE: Definiere sie GANZ OBEN, damit sie überall verfügbar ist ---
+# --- CHECKLISTE: GANZ OBEN DEFINIEREN! ---
 checklist_items = [
     "Grundbuchauszug",
     "Flurkarte",
