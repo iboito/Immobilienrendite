@@ -11,7 +11,7 @@ st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wi
 
 def format_eur(val):
     try:
-        f = float(val)
+        f = float(str(val).replace(",", "."))
         return f"{f:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
     except Exception:
         return str(val)
@@ -22,6 +22,13 @@ def format_percent(val):
         return f"{f:.2f} %"
     except Exception:
         return str(val)
+
+def is_number(val):
+    try:
+        float(str(val).replace(",", "."))
+        return True
+    except:
+        return False
 
 def create_pdf_report(results, inputs):
     pdf = FPDF()
@@ -75,8 +82,16 @@ def create_pdf_report(results, inputs):
     pdf.set_font("DejaVuSans", "", 10)
     for row in results['display_table']:
         kennzahl = str(row.get('kennzahl', ''))
-        val1 = format_eur(row.get('val1', '')) if isinstance(row.get('val1', (int, float))) else str(row.get('val1', ''))
-        val2 = format_eur(row.get('val2', '')) if isinstance(row.get('val2', (int, float))) else str(row.get('val2', ''))
+        val1_raw = row.get('val1', '')
+        val2_raw = row.get('val2', '')
+        try:
+            val1 = format_eur(val1_raw) if is_number(val1_raw) else str(val1_raw) if val1_raw not in [None, "None"] else ""
+        except Exception:
+            val1 = ""
+        try:
+            val2 = format_eur(val2_raw) if is_number(val2_raw) else str(val2_raw) if val2_raw not in [None, "None"] else ""
+        except Exception:
+            val2 = ""
         pdf.cell(80, 7, kennzahl, border=1)
         pdf.cell(35, 7, val1, border=1)
         pdf.cell(35, 7, val2, border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
@@ -345,7 +360,7 @@ if results:
             if val != "":
                 style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
                 st.markdown(
-                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
+                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) and val != "" else f"<div style='{style}'>{key}: {val}</div>",
                     unsafe_allow_html=True
                 )
     with col2:
@@ -355,7 +370,7 @@ if results:
             if val != "":
                 style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
                 st.markdown(
-                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
+                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) and val != "" else f"<div style='{style}'>{key}: {val}</div>",
                     unsafe_allow_html=True
                 )
     with col3:
