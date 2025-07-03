@@ -5,33 +5,102 @@ import immo_core
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
-# --- PDF-Funktion mit Unicode und Bold ---
+def format_eur(val):
+    try:
+        f = float(val)
+        return f"{f:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return str(val)
+
+def format_percent(val):
+    try:
+        f = float(val)
+        return f"{f:.2f} %"
+    except Exception:
+        return str(val)
+
 def create_pdf_report(results, inputs):
     pdf = FPDF()
     pdf.add_page()
-    # Registriere beide Fonts unter exakt gleichem Namen!
     pdf.add_font("DejaVuSans", "", "DejaVuSans.ttf")
     pdf.add_font("DejaVuSans", "B", "DejaVuSans-Bold.ttf")
-    pdf.set_font("DejaVuSans", size=14)
-    pdf.cell(0, 10, "Immobilien-Analyse Bericht", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
-    pdf.set_font("DejaVuSans", size=11)
-    pdf.cell(0, 10, f"Wohnort: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.cell(0, 10, f"Nutzungsart: {inputs.get('nutzungsart','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("DejaVuSans", style="B", size=12)
-    pdf.cell(0, 10, "Wichtigste Kennzahlen:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("DejaVuSans", size=11)
-    if results and 'display_table' in results:
-        for row in results['display_table']:
-            kennzahl = str(row.get('kennzahl', ''))
-            val1 = str(row.get('val1', ''))
-            val2 = str(row.get('val2', ''))
-            pdf.cell(0, 8, f"{kennzahl}: {val1} (Jahr 1), {val2} (Folgejahre)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("DejaVuSans", style="B", size=12)
-    pdf.cell(0, 10, "Checkliste:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("DejaVuSans", size=11)
+    pdf.set_font("DejaVuSans", "B", 16)
+    pdf.cell(0, 12, "Finanzanalyse Immobilieninvestment", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+    pdf.set_font("DejaVuSans", "", 10)
+    pdf.cell(0, 8, f"Bericht erstellt am: {datetime.now().strftime('%d.%m.%Y')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 8, f"Analyse für Objekt in: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
+
+    # 1. Objekt- & Investmentübersicht
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "1. Objekt- & Investmentübersicht", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    pdf.cell(65, 7, "Kaufpreis:", border=0)
+    pdf.cell(40, 7, format_eur(inputs.get('kaufpreis',0)), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Garage/Stellplatz:", border=0)
+    pdf.cell(40, 7, format_eur(inputs.get('garage_stellplatz_kosten',0)), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Investitionsbedarf:", border=0)
+    pdf.cell(40, 7, format_eur(inputs.get('invest_bedarf',0)), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    nebenkosten_summe = (inputs.get('kaufpreis',0) + inputs.get('garage_stellplatz_kosten',0)) * sum(inputs.get('nebenkosten_prozente',{}).values())/100
+    pdf.cell(65, 7, "Kaufnebenkosten:", border=0)
+    pdf.cell(40, 7, format_eur(nebenkosten_summe), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    gesamtinvest = inputs.get('kaufpreis',0)+inputs.get('garage_stellplatz_kosten',0)+inputs.get('invest_bedarf',0)+nebenkosten_summe
+    pdf.cell(65, 7, "Gesamtinvestition:", border=0)
+    pdf.cell(40, 7, format_eur(gesamtinvest), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
+
+    # 2. Finanzierungsstruktur
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "2. Finanzierungsstruktur", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    ek = inputs.get('eigenkapital',0)
+    fk = gesamtinvest - ek
+    pdf.cell(65, 7, "Eigenkapital:", border=0)
+    pdf.cell(40, 7, format_eur(ek), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Fremdkapital (Darlehen):", border=0)
+    pdf.cell(40, 7, format_eur(fk), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
+
+    # 3. Detailrechnung & Persönlicher Cashflow (als Tabelle)
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "3. Detailrechnung & Persönlicher Cashflow", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "B", 10)
+    pdf.cell(80, 7, "Kennzahl", border=1)
+    pdf.cell(35, 7, "Jahr 1 (€)", border=1)
+    pdf.cell(35, 7, "Laufende Jahre (€)", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
+    for row in results['display_table']:
+        kennzahl = str(row.get('kennzahl', ''))
+        val1 = format_eur(row.get('val1', '')) if isinstance(row.get('val1', (int, float))) else str(row.get('val1', ''))
+        val2 = format_eur(row.get('val2', '')) if isinstance(row.get('val2', (int, float))) else str(row.get('val2', ''))
+        pdf.cell(80, 7, kennzahl, border=1)
+        pdf.cell(35, 7, val1, border=1)
+        pdf.cell(35, 7, val2, border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    # 4. Finanzkennzahlen (optional, falls vorhanden)
+    if 'finanzkennzahlen' in results:
+        pdf.ln(3)
+        pdf.set_font("DejaVuSans", "B", 12)
+        pdf.cell(0, 8, "4. Finanzkennzahlen", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVuSans", "B", 10)
+        pdf.cell(80, 7, "Kennzahl", border=1)
+        pdf.cell(35, 7, "Wert", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("DejaVuSans", "", 10)
+        for k, v in results['finanzkennzahlen'].items():
+            if "rendite" in k.lower():
+                v = format_percent(v)
+            pdf.cell(80, 7, k, border=1)
+            pdf.cell(35, 7, str(v), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    # 5. Checkliste
+    pdf.ln(3)
+    pdf.set_font("DejaVuSans", "B", 12)
+    pdf.cell(0, 8, "5. Checkliste: Wichtige Dokumente", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("DejaVuSans", "", 10)
     checklist = [
         "Grundbuchauszug",
         "Flurkarte",
@@ -46,8 +115,7 @@ def create_pdf_report(results, inputs):
     if inputs.get("nutzungsart") == "Vermietung":
         checklist.append("Bei vermieteter Wohnung: Mietvertrag")
     for item in checklist:
-        pdf.cell(0, 8, f"- {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    # fpdf2 gibt je nach Version bytes oder bytearray zurück
+        pdf.cell(0, 7, f"- {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     result = pdf.output()
     if isinstance(result, bytearray):
         return bytes(result)
