@@ -3,8 +3,6 @@ from pathlib import Path
 from PIL import Image
 import immo_core
 import pdf_generator
-import matplotlib.pyplot as plt
-import io
 import base64
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
@@ -19,14 +17,15 @@ except Exception:
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
 
-# Nutzungsart-Auswahl
+# --- 1. Nutzungsart-Auswahl direkt nach dem Titel ---
 nutzungsart = st.selectbox(
     "Nutzungsart wählen",
     ["Vermietung", "Eigennutzung"],
     index=0
 )
+st.markdown("---")
 
-# 1. Objekt & Investition
+# 2. Objekt & Investition
 st.header("1. Objekt & Investition")
 wohnort = st.text_input("Wohnort", "Nürnberg")
 baujahr = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
@@ -38,7 +37,7 @@ oepnv_anbindung = st.selectbox("ÖPNV-Anbindung", ["Sehr gut","Gut","Okay"])
 besonderheiten = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 st.markdown("---")
 
-# 2. Finanzierung
+# 3. Finanzierung
 st.header("2. Finanzierung")
 kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, max_value=10_000_000, value=250_000, step=1_000)
 garage_stellplatz = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50_000, value=0, step=1_000)
@@ -119,7 +118,7 @@ if show_darlehen2:
 
 st.markdown("---")
 
-# 3. Laufende Posten & Steuer
+# 4. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
 if nutzungsart == "Vermietung":
     kaltmiete_monatlich = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
@@ -228,7 +227,6 @@ if st.button("Analyse berechnen"):
         # --- PDF Export ---
         st.subheader("Bericht als PDF exportieren")
         if st.button("PDF-Bericht erstellen"):
-            # Erzeuge PDF mit pdf_generator (wie in deiner App)
             pdf_bytes = pdf_generator.create_bank_report_streamlit(results, inputs)
             b64 = base64.b64encode(pdf_bytes).decode()
             href = f'<a href="data:application/octet-stream;base64,{b64}" download="Immo_Bericht.pdf">PDF herunterladen</a>'
