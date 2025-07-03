@@ -27,22 +27,16 @@ if 'error' in results:
 else:
     st.subheader("Ergebnisse")
 
-    # --- Cashflow- und Steuerrechnung nebeneinander ---
-    st.markdown("### Cashflow- und Steuerrechnung")
-
-    # Definieren Sie die Keys für die jeweiligen Abschnitte
-    cashflow_keys = [
+    # Liste aller gewünschten Kennzahlen wie in Ihrer GUI
+    all_keys = [
         "Einnahmen p.a. (Kaltmiete)",
         "Nicht umlagef. Kosten p.a.",
         "Rückzahlung Darlehen p.a.",
-        "= Cashflow vor Steuern p.a."
-    ]
-    steuer_keys = [
-        "Zinsen p.a."
-    ]
-
-    # Finale Ergebnis-Tabelle: Anschaffungsjahr und Laufende Jahre
-    anschaffungsjahr_keys = [
+        "= Cashflow vor Steuern p.a.",
+        "- Zinsen p.a.",
+        "- AfA p.a.",
+        "- Absetzbare Kaufnebenkosten (Jahr 1)",
+        "= Steuerlicher Gewinn/Verlust p.a.",
         "+ Steuerersparnis / -last p.a.",
         "= Effektiver Cashflow n. St. p.a.",
         "Gesamt-Cashflow (Ihre persönliche Si)",
@@ -50,7 +44,6 @@ else:
         "+/- Mtl. Cashflow Immobilie",
         "= Neues verfügbares Einkommen"
     ]
-    laufende_jahre_keys = anschaffungsjahr_keys
 
     # Hilfsfunktion für Werte aus display_table
     def get_val(key, col):
@@ -62,76 +55,22 @@ else:
             return val
         return ""
 
-    # Cashflow/Steuerrechnung nebeneinander
+    # Zwei Spalten für Anschaffungsjahr und Laufende Jahre
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("**Cashflow-Rechnung (Ihr Konto)**")
-        for key in cashflow_keys:
-            val = get_val(key, 1)
+        st.markdown("#### Jahr der Anschaffung (€)")
+        for key in all_keys:
+            val = get_val(key, 0)
             if val != "":
-                st.markdown(f"{key}: <b>{val}</b>", unsafe_allow_html=True)
+                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
     with col2:
-        st.markdown("**Steuer-Rechnung (Finanzamt)**")
-        for key in steuer_keys:
-            val = get_val(key, 1)
-            if val != "":
-                st.markdown(f"{key}: <b>{val}</b>", unsafe_allow_html=True)
-
-    # --- Steuer-Tabelle: Anschaffungsjahr vs. Laufende Jahre ---
-    st.markdown("---")
-    st.markdown("<div style='background-color:#2a4c6f; color:white; padding:8px; font-weight:bold;'>Steuer-Rechnung (Finanzamt)</div>", unsafe_allow_html=True)
-    col3, col4 = st.columns(2)
-    with col3:
-        st.markdown("#### Jahr der Anschaffung (€)")
-        steuer_jahr_keys = [
-            "- Zinsen p.a.",
-            "- AfA p.a.",
-            "- Absetzbare Kaufnebenkosten (Jahr 1)",
-            "= Steuerlicher Gewinn/Verlust p.a."
-        ]
-        for key in steuer_jahr_keys:
-            val = get_val(key, 0)
-            if val != "":
-                if key.startswith("="):
-                    st.markdown(f"<b>{key} {val}</b>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"{key} {val}", unsafe_allow_html=True)
-    with col4:
         st.markdown("#### Laufende Jahre (€)")
-        for key in steuer_jahr_keys:
+        for key in all_keys:
             val = get_val(key, 1)
             if val != "":
-                if key.startswith("="):
-                    st.markdown(f"<b>{key} {val}</b>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"{key} {val}", unsafe_allow_html=True)
-
-    # --- Finale Ergebnisse: Anschaffungsjahr vs. Laufende Jahre ---
-    st.markdown("---")
-    st.markdown("### Finale Ergebnisse")
-    col5, col6 = st.columns(2)
-    with col5:
-        st.markdown("#### Jahr der Anschaffung (€)")
-        for key in anschaffungsjahr_keys:
-            val = get_val(key, 0)
-            if val != "":
-                style = ""
-                if "+ Steuerersparnis" in key or "= Neues verfügbares Einkommen" in key:
-                    style = "color: #1db954; font-weight: bold;"
-                elif key.startswith("="):
-                    style = "font-weight: bold;"
-                st.markdown(f"<div style='{style}'>{key} {val}</div>", unsafe_allow_html=True)
-    with col6:
-        st.markdown("#### Laufende Jahre (€)")
-        for key in laufende_jahre_keys:
-            val = get_val(key, 1)
-            if val != "":
-                style = ""
-                if "+ Steuerersparnis" in key or "= Neues verfügbares Einkommen" in key:
-                    style = "color: #1db954; font-weight: bold;"
-                elif key.startswith("="):
-                    style = "font-weight: bold;"
-                st.markdown(f"<div style='{style}'>{key} {val}</div>", unsafe_allow_html=True)
+                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
 
     # KPIs
     st.subheader("Kennzahlen (KPIs)")
