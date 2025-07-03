@@ -96,7 +96,6 @@ def create_pdf_report(results, inputs):
     if tilgung1 == "" and inputs.get('tilgung1_euro_mtl'):
         tilgung1 = f"{inputs.get('tilgung1_euro_mtl')} € mtl."
     pdf.cell(40, 7, str(tilgung1), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    # Automatisch berechnete Laufzeit, falls kein Input
     laufzeit_anzeige = inputs.get('laufzeit1_jahre')
     if not laufzeit_anzeige or laufzeit_anzeige in [None, '', 0]:
         laufzeit_anzeige = f"{d1.get('laufzeit_jahre',''):.1f}" if d1.get('laufzeit_jahre') else ""
@@ -140,7 +139,6 @@ def create_pdf_report(results, inputs):
     pdf.cell(35, 7, "Jahr 1 (€)", border=1)
     pdf.cell(35, 7, "Laufende Jahre (€)", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "", 10)
-    # Dynamische Auswahl der Zeilen je nach Nutzungsart
     if inputs.get("nutzungsart") == "Vermietung":
         all_keys = [
             "Einnahmen p.a. (Kaltmiete)",
