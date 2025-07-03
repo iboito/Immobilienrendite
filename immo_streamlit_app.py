@@ -1,11 +1,10 @@
-# immo_streamlit_app.py
-
 import streamlit as st
 from pathlib import Path
 from PIL import Image
 import immo_core
 import pdf_generator
 
+# Seite konfigurieren
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
 # Titel und Icon
@@ -73,6 +72,46 @@ if show_darlehen2:
 else:
     tilgung2 = tilg_eur2 = laufzeit2 = None
 
+# --- LIVE Darlehensdetails wie in der GUI ---
+from immo_core import berechne_darlehen_details
+# Darlehen I
+nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
+darlehen1_summe = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe - eigenkapital
+modus_d1 = 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit'
+d1 = berechne_darlehen_details(
+    darlehen1_summe, zins1,
+    tilgung_p=tilgung1,
+    tilgung_euro_mtl=tilg_eur1,
+    laufzeit_jahre=laufzeit1,
+    modus=modus_d1
+)
+st.markdown("**Darlehen I Übersicht:**")
+st.markdown(
+    f"- Darlehenssumme: **{darlehen1_summe:,.2f} €**  \n"
+    f"- Rate: **{d1['monatsrate']:,.2f} €**  \n"
+    f"- Laufzeit: **{d1['laufzeit_jahre']:.1f} Jahre**  \n"
+    f"- Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**"
+)
+
+# Darlehen II (optional)
+if show_darlehen2:
+    # Hier muss ggf. die echte Darlehenssumme für II eingesetzt werden!
+    d2 = berechne_darlehen_details(
+        0, zins2,
+        tilgung_p=tilgung2,
+        tilgung_euro_mtl=tilg_eur2,
+        laufzeit_jahre=laufzeit2,
+        modus=('tilgungssatz' if tilgung2_modus.startswith("Tilgungssatz")
+               else 'tilgung_euro' if tilgung2_modus.startswith("Tilgungsbetrag")
+               else 'laufzeit')
+    )
+    st.markdown("**Darlehen II Übersicht:**")
+    st.markdown(
+        f"- Rate: **{d2['monatsrate']:,.2f} €**  \n"
+        f"- Laufzeit: **{d2['laufzeit_jahre']:.1f} Jahre**  \n"
+        f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**"
+    )
+
 st.markdown("---")
 
 # 3. Laufende Posten & Steuer
@@ -87,7 +126,7 @@ verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)",
 
 st.markdown("---")
 
-# Eingaben sammeln
+# Eingaben für Hauptberechnung
 inputs = {
     'wohnort': wohnort,
     'baujahr_kategorie': baujahr,
@@ -109,9 +148,7 @@ inputs = {
     },
     'nutzungsart': 'Vermietung',
     'zins1_prozent': zins1,
-    'modus_d1': ('tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz")
-                 else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag")
-                 else 'laufzeit'),
+    'modus_d1': modus_d1,
     'tilgung1_prozent': tilgung1,
     'tilgung1_euro_mtl': tilg_eur1,
     'laufzeit1_jahre': laufzeit1,
@@ -130,7 +167,7 @@ inputs = {
     'verfuegbares_einkommen_mtl': verfuegbares_einkommen
 }
 
-# Berechnung
+# Hauptberechnung
 results = immo_core.calculate_analytics(inputs)
 
 if 'error' in results:
@@ -144,39 +181,17 @@ else:
     if afa_row and afa_row['val1'] is not None and afa_row['val2'] is not None:
         st.markdown(f"**AfA p.a.:** {afa_row['val1']} % → {afa_row['val2']:,.2f} €")
 
-    # Darlehen I Übersicht robust
-    d1_lz = next((r for r in results['display_table'] if "Laufzeit Darlehen I" in r['kennzahl']), None)
-    d1_tg = next((r for r in results['display_table'] if "Effektiver Tilgungssatz I" in r['kennzahl']), None)
-    st.markdown("**Darlehen I Übersicht:**")
-    if d1_lz and d1_lz['val2'] is not None:
-        st.markdown(f"- Laufzeit: **{d1_lz['val2']}** Jahre")
-    if d1_tg and d1_tg['val2'] is not None:
-        st.markdown(f"- Tilgungssatz: **{d1_tg['val2']}** %")
-
-    # Darlehen II Übersicht robust
-    if show_darlehen2:
-        d2_lz = next((r for r in results['display_table'] if "Laufzeit Darlehen II" in r['kennzahl']), None)
-        d2_tg = next((r for r in results['display_table'] if "Effektiver Tilgungssatz II" in r['kennzahl']), None)
-        st.markdown("**Darlehen II Übersicht:**")
-        if d2_lz and d2_lz['val2'] is not None:
-            st.markdown(f"- Laufzeit: **{d2_lz['val2']}** Jahre")
-        if d2_tg and d2_tg['val2'] is not None:
-            st.markdown(f"- Tilgungssatz: **{d2_tg['val2']}** %")
-
     st.markdown("---")
-    # Ergebnistabelle
     st.subheader("Ergebnisse")
     df = {r['kennzahl']: [r['val1'], r['val2']] for r in results['display_table']}
     st.dataframe(df, use_container_width=True)
 
-    # KPIs
     st.subheader("Kennzahlen (KPIs)")
     cols = st.columns(len(results['kpi_table']))
     for col, k in zip(cols, results['kpi_table']):
         with col:
             st.metric(k['Kennzahl'], k['Wert'])
 
-    # Grafiken
     st.subheader("Grafiken")
     c1, c2 = st.columns(2)
     with c1:
@@ -185,7 +200,6 @@ else:
     with c2:
         st.pyplot(immo_core.plt_bar(results['bar_data'], ret_fig=True))
 
-    # PDF-Export
     if st.button("📄 PDF-Bericht erstellen"):
         from tempfile import NamedTemporaryFile
         with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
