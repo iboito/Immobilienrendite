@@ -357,7 +357,7 @@ st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 st.markdown("---")
 
-# Interaktive Checkliste-Status speichern
+# Interaktive Checkliste-Status speichern (nur EINMAL pro Key!)
 checklist_items = [
     "Grundbuchauszug",
     "Flurkarte",
