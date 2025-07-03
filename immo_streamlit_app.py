@@ -9,6 +9,19 @@ from datetime import datetime
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
+# --- CHECKLISTE: Definiere sie GANZ OBEN, damit sie überall verfügbar ist ---
+checklist_items = [
+    "Grundbuchauszug",
+    "Flurkarte",
+    "Energieausweis",
+    "Teilungserklärung & Gemeinschaftsordnung",
+    "Protokolle der letzten 3–5 Eigentümerversammlungen",
+    "Jahresabrechnung & Wirtschaftsplan",
+    "Höhe der Instandhaltungsrücklage",
+    "Exposé & Grundrisse",
+    "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
+]
+
 def format_eur(val):
     try:
         f = float(str(val).replace(",", "."))
@@ -30,7 +43,7 @@ def is_number(val):
     except:
         return False
 
-def create_pdf_report(results, inputs, checklist_items):
+def create_pdf_report(results, inputs):
     pdf = FPDF()
     pdf.add_page()
     pdf.add_font("DejaVuSans", "", "DejaVuSans.ttf")
@@ -232,6 +245,8 @@ nutzungsart = st.selectbox(
     ["Vermietung", "Eigennutzung"],
     index=0
 )
+if nutzungsart == "Vermietung" and "Bei vermieteter Wohnung: Mietvertrag" not in checklist_items:
+    checklist_items.append("Bei vermieteter Wohnung: Mietvertrag")
 st.markdown("---")
 
 # 1. Objekt & Investition
@@ -485,7 +500,7 @@ if results:
     st.markdown("---")
     st.subheader("Bericht als PDF exportieren")
     if st.button("PDF-Bericht erstellen"):
-        pdf_bytes = create_pdf_report(results, inputs, checklist_items)
+        pdf_bytes = create_pdf_report(results, inputs)
         st.session_state['pdf_bytes'] = pdf_bytes
         st.success("PDF wurde erstellt. Klicke unten zum Herunterladen:")
     if st.session_state['pdf_bytes']:
