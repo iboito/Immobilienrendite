@@ -108,6 +108,8 @@ if show_darlehen2:
         f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**"
     )
 
+st.markdown("---")
+
 # 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
 kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
@@ -118,7 +120,7 @@ steuersatz             = st.number_input("Persönl. Steuersatz (%)", min_value=0
 st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 
-# KEINE Trennlinie hier!
+st.markdown("---")
 
 st.subheader("Ergebnisse")
 inputs = {
