@@ -3,7 +3,6 @@ from pathlib import Path
 from PIL import Image
 import immo_core
 import pdf_generator
-import base64
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
@@ -178,116 +177,122 @@ inputs = {
     'verfuegbares_einkommen_mtl': verfuegbares_einkommen
 }
 
-# --- Berechnung und Ergebnisanzeige ---
+# --- Persistente Ergebnisanzeige und Checkliste ---
+if 'results' not in st.session_state:
+    st.session_state['results'] = None
+if 'pdf_bytes' not in st.session_state:
+    st.session_state['pdf_bytes'] = None
+
 if st.button("Analyse berechnen"):
     results = immo_core.calculate_analytics(inputs)
     if 'error' in results:
+        st.session_state['results'] = None
         st.error(results['error'])
     else:
-        st.subheader("Ergebnisse")
+        st.session_state['results'] = results
 
-        if nutzungsart == "Vermietung":
-            all_keys = [
-                "Einnahmen p.a. (Kaltmiete)",
-                "Umlagefähige Kosten p.a.",
-                "Nicht umlagef. Kosten p.a.",
-                "Rückzahlung Darlehen p.a.",
-                "- Zinsen p.a.",
-                "Jährliche Gesamtkosten",
-                "= Cashflow vor Steuern p.a.",
-                "- AfA p.a.",
-                "- Absetzbare Kaufnebenkosten (Jahr 1)",
-                "= Steuerlicher Gewinn/Verlust p.a.",
-                "+ Steuerersparnis / -last p.a.",
-                "= Effektiver Cashflow n. St. p.a.",
-                "Gesamt-Cashflow (Ihre persönliche Si)",
-                "Ihr monatl. Einkommen (vorher)",
-                "- Mtl. Kosten Immobilie",
-                "= Neues verfügbares Einkommen"
-            ]
-        else:
-            all_keys = [
-                "Laufende Kosten p.a.",
-                "Rückzahlung Darlehen p.a.",
-                "- Zinsen p.a.",
-                "Jährliche Gesamtkosten",
-                "Gesamt-Cashflow (Ihre persönliche Si)",
-                "Ihr monatl. Einkommen (vorher)",
-                "- Mtl. Kosten Immobilie",
-                "= Neues verfügbares Einkommen"
-            ]
+results = st.session_state['results']
 
-        # 3-Spalten-Layout: Anschaffungsjahr | Laufende Jahre | Grafik
-        col1, col2, col3 = st.columns([2.5, 2.5, 1])
-        with col1:
-            st.markdown("#### Jahr der Anschaffung (€)")
-            for key in all_keys:
-                val = next((r['val1'] for r in results['display_table'] if key in r['kennzahl']), "")
-                if val != "":
-                    style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
-                    st.markdown(
-                        f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
-                        unsafe_allow_html=True
-                    )
-        with col2:
-            st.markdown("#### Laufende Jahre (€)")
-            for key in all_keys:
-                val = next((r['val2'] for r in results['display_table'] if key in r['kennzahl']), "")
-                if val != "":
-                    style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
-                    st.markdown(
-                        f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
-                        unsafe_allow_html=True
-                    )
-        with col3:
-            ek = eigenkapital
-            fk = gesamtfinanzierung - eigenkapital
-            labels = ['Eigenkapital', 'Darlehen']
-            sizes = [ek, fk]
-            colors = ['#4e79a7', '#f28e2b']
-            fig, ax = plt.subplots(figsize=(1, 1))  # Sehr kompakt
-            wedges, texts, autotexts = ax.pie(
-                sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-                startangle=90, counterclock=False, textprops={'fontsize': 8}
-            )
-            ax.axis('equal')
-            ax.set_title('Finanzierungsstruktur', fontsize=9)
-            st.pyplot(fig)
-        st.markdown("---")
+if results:
+    st.subheader("Ergebnisse")
 
-        # 4. Checkliste
-        st.header("4. Checkliste: Wichtige Dokumente für den Immobilienkauf")
-        checklist = [
-            "Grundbuchauszug",
-            "Flurkarte",
-            "Energieausweis",
-            "Teilungserklärung & Gemeinschaftsordnung",
-            "Protokolle der letzten 3–5 Eigentümerversammlungen",
-            "Jahresabrechnung & Wirtschaftsplan",
-            "Höhe der Instandhaltungsrücklage",
-            "Exposé & Grundrisse",
-            "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
+    if nutzungsart == "Vermietung":
+        all_keys = [
+            "Einnahmen p.a. (Kaltmiete)",
+            "Umlagefähige Kosten p.a.",
+            "Nicht umlagef. Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.",
+            "- AfA p.a.",
+            "- Absetzbare Kaufnebenkosten (Jahr 1)",
+            "= Steuerlicher Gewinn/Verlust p.a.",
+            "+ Steuerersparnis / -last p.a.",
+            "= Effektiver Cashflow n. St. p.a.",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
         ]
-        if nutzungsart == "Vermietung":
-            checklist.append("Bei vermieteter Wohnung: Mietvertrag")
-        checked_states = []
-        for item in checklist:
-            checked = st.checkbox(item, key=f"check_{item}")
-            checked_states.append(checked)
+    else:
+        all_keys = [
+            "Laufende Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "Gesamt-Cashflow (Ihre persönliche Si)",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
 
-        st.markdown("---")
-        # --- PDF Export ---
-        st.subheader("Bericht als PDF exportieren")
-        if 'pdf_bytes' not in st.session_state:
-            st.session_state['pdf_bytes'] = None
-        if st.button("PDF-Bericht erstellen"):
-            pdf_bytes = pdf_generator.create_bank_report_streamlit(results, inputs)
-            st.session_state['pdf_bytes'] = pdf_bytes
-            st.success("PDF wurde erstellt. Klicke unten zum Herunterladen:")
-        if st.session_state['pdf_bytes']:
-            st.download_button(
-                label="PDF herunterladen",
-                data=st.session_state['pdf_bytes'],
-                file_name="Immo_Bericht.pdf",
-                mime="application/pdf"
-            )
+    col1, col2, col3 = st.columns([2.5, 2.5, 1])
+    with col1:
+        st.markdown("#### Jahr der Anschaffung (€)")
+        for key in all_keys:
+            val = next((r['val1'] for r in results['display_table'] if key in r['kennzahl']), "")
+            if val != "":
+                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                st.markdown(
+                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
+                    unsafe_allow_html=True
+                )
+    with col2:
+        st.markdown("#### Laufende Jahre (€)")
+        for key in all_keys:
+            val = next((r['val2'] for r in results['display_table'] if key in r['kennzahl']), "")
+            if val != "":
+                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                st.markdown(
+                    f"<div style='{style}'>{key}: {val:,.2f} €</div>" if isinstance(val, (int, float)) else f"<div style='{style}'>{key}: {val}</div>",
+                    unsafe_allow_html=True
+                )
+    with col3:
+        ek = eigenkapital
+        fk = gesamtfinanzierung - eigenkapital
+        labels = ['Eigenkapital', 'Darlehen']
+        sizes = [ek, fk]
+        colors = ['#4e79a7', '#f28e2b']
+        fig, ax = plt.subplots(figsize=(1, 1))  # Sehr kompakt
+        wedges, texts, autotexts = ax.pie(
+            sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+            startangle=90, counterclock=False, textprops={'fontsize': 8}
+        )
+        ax.axis('equal')
+        ax.set_title('Finanzierungsstruktur', fontsize=9)
+        st.pyplot(fig)
+    st.markdown("---")
+
+    # 4. Checkliste
+    st.header("4. Checkliste: Wichtige Dokumente für den Immobilienkauf")
+    checklist = [
+        "Grundbuchauszug",
+        "Flurkarte",
+        "Energieausweis",
+        "Teilungserklärung & Gemeinschaftsordnung",
+        "Protokolle der letzten 3–5 Eigentümerversammlungen",
+        "Jahresabrechnung & Wirtschaftsplan",
+        "Höhe der Instandhaltungsrücklage",
+        "Exposé & Grundrisse",
+        "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
+    ]
+    if nutzungsart == "Vermietung":
+        checklist.append("Bei vermieteter Wohnung: Mietvertrag")
+    for item in checklist:
+        st.checkbox(item, key=f"check_{item}")
+
+    st.markdown("---")
+    # --- PDF Export ---
+    st.subheader("Bericht als PDF exportieren")
+    if st.button("PDF-Bericht erstellen"):
+        pdf_bytes = pdf_generator.create_bank_report_streamlit(results, inputs)
+        st.session_state['pdf_bytes'] = pdf_bytes
+        st.success("PDF wurde erstellt. Klicke unten zum Herunterladen:")
+    if st.session_state['pdf_bytes']:
+        st.download_button(
+            label="PDF herunterladen",
+            data=st.session_state['pdf_bytes'],
+            file_name="Immo_Bericht.pdf",
+            mime="application/pdf"
+        )
