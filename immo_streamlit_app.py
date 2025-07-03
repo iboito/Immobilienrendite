@@ -43,36 +43,36 @@ eigenkapital          = st.number_input("Eigenkapital (€)", min_value=0, max_v
 
 st.subheader("Kaufnebenkosten (%)")
 grunderwerbsteuer     = st.number_input("Grunderwerbsteuer %", min_value=0.0, max_value=15.0, value=3.5, step=0.1)
-notar                 = st.number_input("Notar %",             min_value=0.0, max_value=10.0, value=1.5, step=0.1)
-grundbuch             = st.number_input("Grundbuch %",         min_value=0.0, max_value=10.0, value=0.5, step=0.1)
-makler                = st.number_input("Makler %",            min_value=0.0, max_value=10.0, value=3.57, step=0.01)
+notar                 = st.number_input("Notar %", min_value=0.0, max_value=10.0, value=1.5, step=0.1)
+grundbuch             = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
+makler                = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
 
 st.subheader("Darlehen I")
-zins1                 = st.number_input("Zins I (%)",          min_value=0.0, max_value=10.0, value=3.5, step=0.05)
+zins1                 = st.number_input("Zins I (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05)
 tilgung1_modus        = st.selectbox("Tilgungsmodus I", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
 if tilgung1_modus == "Tilgungssatz (%)":
-    tilgung1          = st.number_input("Tilgung I (%)",       min_value=0.0, max_value=10.0, value=2.0, step=0.1)
-    tilg_eur1         = None; laufzeit1 = None
+    tilgung1          = st.number_input("Tilgung I (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+    tilg_eur1, laufzeit1 = None, None
 elif tilgung1_modus == "Tilgungsbetrag (€ mtl.)":
-    tilg_eur1         = st.number_input("Tilgung I (€ mtl.)",   min_value=0, max_value=50_000, value=350, step=50)
-    tilgung1          = None; laufzeit1 = None
+    tilg_eur1         = st.number_input("Tilgung I (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+    tilgung1, laufzeit1 = None, None
 else:
-    laufzeit1         = st.number_input("Laufzeit I (Jahre)",   min_value=1, max_value=50, value=25, step=1)
-    tilgung1          = None; tilg_eur1 = None
+    laufzeit1         = st.number_input("Laufzeit I (Jahre)", min_value=1, max_value=50, value=25, step=1)
+    tilgung1, tilg_eur1 = None, None
 
 show_darlehen2         = st.checkbox("Weiteres Darlehen hinzufügen")
-zins2                 = st.number_input("Zins II (%)",         min_value=0.0, max_value=10.0, value=0.0, step=0.05, disabled=not show_darlehen2)
+zins2                 = st.number_input("Zins II (%)", min_value=0.0, max_value=10.0, value=0.0, step=0.05, disabled=not show_darlehen2)
 tilgung2_modus        = st.selectbox("Tilgungsmodus II", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], disabled=not show_darlehen2)
 if show_darlehen2:
     if tilgung2_modus == "Tilgungssatz (%)":
-        tilgung2       = st.number_input("Tilgung II (%)",       min_value=0.0, max_value=10.0, value=2.0, step=0.1)
-        tilg_eur2      = None; laufzeit2 = None
+        tilgung2       = st.number_input("Tilgung II (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+        tilg_eur2, laufzeit2 = None, None
     elif tilgung2_modus == "Tilgungsbetrag (€ mtl.)":
-        tilg_eur2      = st.number_input("Tilgung II (€ mtl.)",   min_value=0, max_value=50_000, value=350, step=50)
-        tilgung2       = None; laufzeit2 = None
+        tilg_eur2      = st.number_input("Tilgung II (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+        tilgung2, laufzeit2 = None, None
     else:
-        laufzeit2      = st.number_input("Laufzeit II (Jahre)",   min_value=1, max_value=50, value=25, step=1)
-        tilgung2       = None; tilg_eur2 = None
+        laufzeit2      = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
+        tilgung2, tilg_eur2 = None, None
 else:
     tilgung2 = tilg_eur2 = laufzeit2 = None
 
@@ -80,10 +80,10 @@ st.markdown("---")
 
 # 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
-kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)",           min_value=0, max_value=10_000, value=1_000, step=50)
-umlagefaehige_monat    = st.number_input("Umlagefähige Kosten (€ mtl.)",  min_value=0, max_value=1_000, value=150, step=10)
+kaltmiete_monatlich    = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
+umlagefaehige_monat    = st.number_input("Umlagefähige Kosten (€ mtl.)", min_value=0, max_value=1_000, value=150, step=10)
 nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10_000, value=960, step=10)
-steuersatz             = st.number_input("Persönl. Steuersatz (%)",        min_value=0.0, max_value=100.0, value=42.0, step=0.5)
+steuersatz             = st.number_input("Persönl. Steuersatz (%)", min_value=0.0, max_value=100.0, value=42.0, step=0.5)
 
 st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
@@ -112,13 +112,17 @@ inputs = {
     },
     'nutzungsart': 'Vermietung',
     'zins1_prozent': zins1,
-    'modus_d1': 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit',
+    'modus_d1': ('tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz")
+                 else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag")
+                 else 'laufzeit'),
     'tilgung1_prozent': tilgung1,
     'tilgung1_euro_mtl': tilg_eur1,
     'laufzeit1_jahre': laufzeit1,
     'darlehen2_summe': 0,
     'zins2_prozent': zins2,
-    'modus_d2': 'tilgungssatz' if tilgung2_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung2_modus.startswith("Tilgungsbetrag") else 'laufzeit',
+    'modus_d2': ('tilgungssatz' if tilgung2_modus.startswith("Tilgungssatz")
+                 else 'tilgung_euro' if tilgung2_modus.startswith("Tilgungsbetrag")
+                 else 'laufzeit'),
     'tilgung2_prozent': tilgung2,
     'tilgung2_euro_mtl': tilg_eur2,
     'laufzeit2_jahre': laufzeit2,
@@ -132,30 +136,33 @@ inputs = {
 # Berechnung
 results = immo_core.calculate_analytics(inputs)
 
+# Live-Anzeige AfA + Darlehensübersicht
 if 'error' in results:
     st.error(results['error'])
 else:
-    # AfA sofort anzeigen
+    # AfA
     afa_row = next((r for r in results['display_table'] if r['kennzahl'].startswith(" - AfA p.a.")), None)
     if afa_row:
         st.markdown(f"**AfA p.a.:** {afa_row['val1']} % → {afa_row['val2']:,.2f} €")
 
     # Darlehen I Übersicht
-    d1 = results['d1_details']
     st.markdown("**Darlehen I Übersicht:**")
-    if tilgung1_modus != "Laufzeit (Jahre)":
-        st.markdown(f"- Laufzeit: **{d1['laufzeit_jahre']:.1f}** Jahre")
-    else:
-        st.markdown(f"- Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f}** %")
+    d1 = next((r for r in results['display_table'] if "Laufzeit Darlehen I" in r['kennzahl']), None)
+    t1 = next((r for r in results['display_table'] if "Effektiver Tilgungssatz I" in r['kennzahl']), None)
+    if d1:
+        st.markdown(f"- Laufzeit: **{d1['val2']:.1f}** Jahre")
+    if t1:
+        st.markdown(f"- Tilgungssatz: **{t1['val2']:.2f}** %")
 
     # Darlehen II Übersicht
     if show_darlehen2:
-        d2 = results['d2_details']
         st.markdown("**Darlehen II Übersicht:**")
-        if tilgung2_modus != "Laufzeit (Jahre)":
-            st.markdown(f"- Laufzeit: **{d2['laufzeit_jahre']:.1f}** Jahre")
-        else:
-            st.markdown(f"- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f}** %")
+        d2 = next((r for r in results['display_table'] if "Laufzeit Darlehen II" in r['kennzahl']), None)
+        t2 = next((r for r in results['display_table'] if "Effektiver Tilgungssatz II" in r['kennzahl']), None)
+        if d2:
+            st.markdown(f"- Laufzeit: **{d2['val2']:.1f}** Jahre")
+        if t2:
+            st.markdown(f"- Tilgungssatz: **{t2['val2']:.2f}** %")
 
     st.markdown("---")
     # Ergebnistabelle
@@ -166,18 +173,17 @@ else:
     # KPIs
     st.subheader("Kennzahlen (KPIs)")
     cols = st.columns(len(results['kpi_table']))
-    for col, kpi in zip(cols, results['kpi_table']):
+    for col, k in zip(cols, results['kpi_table']):
         with col:
-            st.metric(kpi['Kennzahl'], kpi['Wert'])
+            st.metric(k['Kennzahl'], k['Wert'])
 
     # Grafiken
     st.subheader("Grafiken")
-    pie_col, bar_col = st.columns(2)
-    with pie_col:
-        labels = list(results['pie_data'].keys())
-        sizes  = list(results['pie_data'].values())
+    c1, c2 = st.columns(2)
+    with c1:
+        labels = list(results['pie_data'].keys()); sizes = list(results['pie_data'].values())
         st.pyplot(immo_core.plt_pie(labels, sizes, ret_fig=True))
-    with bar_col:
+    with c2:
         st.pyplot(immo_core.plt_bar(results['bar_data'], ret_fig=True))
 
     # PDF-Export
