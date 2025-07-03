@@ -4,7 +4,6 @@ from PIL import Image
 import immo_core
 import pdf_generator
 
-# Seite konfigurieren
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
 # Titel und Icon
@@ -95,7 +94,6 @@ st.markdown(
 
 # Darlehen II (optional)
 if show_darlehen2:
-    # Hier muss ggf. die echte Darlehenssumme für II eingesetzt werden!
     d2 = berechne_darlehen_details(
         0, zins2,
         tilgung_p=tilgung2,
@@ -173,14 +171,6 @@ results = immo_core.calculate_analytics(inputs)
 if 'error' in results:
     st.error(results['error'])
 else:
-    # AfA robust anzeigen
-    afa_row = next(
-        (r for r in results['display_table'] if "AfA" in r['kennzahl'] and "p.a." in r['kennzahl']),
-        None
-    )
-    if afa_row and afa_row['val1'] is not None and afa_row['val2'] is not None:
-        st.markdown(f"**AfA p.a.:** {afa_row['val1']} % → {afa_row['val2']:,.2f} €")
-
     st.markdown("---")
     st.subheader("Ergebnisse")
     df = {r['kennzahl']: [r['val1'], r['val2']] for r in results['display_table']}
