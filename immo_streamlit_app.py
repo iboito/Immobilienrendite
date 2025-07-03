@@ -3,6 +3,7 @@ from pathlib import Path
 from PIL import Image
 import immo_core
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
@@ -13,24 +14,24 @@ def create_pdf_report(results, inputs):
     pdf.add_page()
     pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
     pdf.set_font("DejaVu", size=14)
-    pdf.cell(0, 10, "Immobilien-Analyse Bericht", new_x=pdf.l_margin, new_y=pdf.get_y() + 10, align='C')
+    pdf.cell(0, 10, "Immobilien-Analyse Bericht", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
     pdf.set_font("DejaVu", size=11)
-    pdf.ln(8)
-    pdf.cell(0, 10, f"Wohnort: {inputs.get('wohnort','')}", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
-    pdf.cell(0, 10, f"Nutzungsart: {inputs.get('nutzungsart','')}", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
     pdf.ln(4)
+    pdf.cell(0, 10, f"Wohnort: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 10, f"Nutzungsart: {inputs.get('nutzungsart','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
     pdf.set_font("DejaVu", style='B', size=12)
-    pdf.cell(0, 10, "Wichtigste Kennzahlen:", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
+    pdf.cell(0, 10, "Wichtigste Kennzahlen:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVu", size=11)
     if results and 'display_table' in results:
         for row in results['display_table']:
             kennzahl = row.get('kennzahl', '')
             val1 = row.get('val1', '')
             val2 = row.get('val2', '')
-            pdf.cell(0, 8, f"{kennzahl}: {val1} (Jahr 1), {val2} (Folgejahre)", new_x=pdf.l_margin, new_y=pdf.get_y() + 8)
-    pdf.ln(5)
+            pdf.cell(0, 8, f"{kennzahl}: {val1} (Jahr 1), {val2} (Folgejahre)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
     pdf.set_font("DejaVu", style='B', size=12)
-    pdf.cell(0, 10, "Checkliste:", new_x=pdf.l_margin, new_y=pdf.get_y() + 10)
+    pdf.cell(0, 10, "Checkliste:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVu", size=11)
     checklist = [
         "Grundbuchauszug",
@@ -46,7 +47,7 @@ def create_pdf_report(results, inputs):
     if inputs.get("nutzungsart") == "Vermietung":
         checklist.append("Bei vermieteter Wohnung: Mietvertrag")
     for item in checklist:
-        pdf.cell(0, 8, f"- {item}", new_x=pdf.l_margin, new_y=pdf.get_y() + 8)
+        pdf.cell(0, 8, f"- {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     return pdf.output(dest="S").encode("latin-1", "replace")
 
 # Titel und Icon
