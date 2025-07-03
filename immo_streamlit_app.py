@@ -77,7 +77,15 @@ def create_pdf_report(results, inputs):
     pdf.cell(40, 7, format_eur(ek), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.cell(65, 7, "Fremdkapital (Darlehen):", border=0)
     pdf.cell(40, 7, format_eur(fk), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    # Darlehen I Details
+
+    # Darlehen I Details (inkl. automatisch berechneter Laufzeit)
+    from immo_core import berechne_darlehen_details
+    d1 = berechne_darlehen_details(
+        fk, inputs.get('zins1_prozent',0), tilgung_p=inputs.get('tilgung1_prozent',None),
+        tilgung_euro_mtl=inputs.get('tilgung1_euro_mtl',None),
+        laufzeit_jahre=inputs.get('laufzeit1_jahre',None),
+        modus=inputs.get('modus_d1','tilgungssatz')
+    )
     pdf.set_font("DejaVuSans", "B", 10)
     pdf.cell(0, 7, "Darlehen I:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("DejaVuSans", "", 10)
@@ -88,23 +96,24 @@ def create_pdf_report(results, inputs):
     if tilgung1 == "" and inputs.get('tilgung1_euro_mtl'):
         tilgung1 = f"{inputs.get('tilgung1_euro_mtl')} € mtl."
     pdf.cell(40, 7, str(tilgung1), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    # Automatisch berechnete Laufzeit, falls kein Input
+    laufzeit_anzeige = inputs.get('laufzeit1_jahre')
+    if not laufzeit_anzeige or laufzeit_anzeige in [None, '', 0]:
+        laufzeit_anzeige = f"{d1.get('laufzeit_jahre',''):.1f}" if d1.get('laufzeit_jahre') else ""
     pdf.cell(65, 7, "Laufzeit (Jahre):", border=0)
-    pdf.cell(40, 7, str(inputs.get('laufzeit1_jahre', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    # Monatsrate, falls berechnet
-    try:
-        from immo_core import berechne_darlehen_details
-        d1 = berechne_darlehen_details(
-            fk, inputs.get('zins1_prozent',0), tilgung_p=inputs.get('tilgung1_prozent',None),
-            tilgung_euro_mtl=inputs.get('tilgung1_euro_mtl',None),
-            laufzeit_jahre=inputs.get('laufzeit1_jahre',None),
-            modus=inputs.get('modus_d1','tilgungssatz')
-        )
-        pdf.cell(65, 7, "Monatsrate (€):", border=0)
-        pdf.cell(40, 7, format_eur(d1.get('monatsrate', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    except Exception:
-        pass
+    pdf.cell(40, 7, str(laufzeit_anzeige), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(65, 7, "Monatsrate (€):", border=0)
+    pdf.cell(40, 7, format_eur(d1.get('monatsrate', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
     # Darlehen II Details, falls vorhanden
     if inputs.get('zins2_prozent', 0):
+        from immo_core import berechne_darlehen_details
+        d2 = berechne_darlehen_details(
+            0, inputs.get('zins2_prozent',0), tilgung_p=inputs.get('tilgung2_prozent',None),
+            tilgung_euro_mtl=inputs.get('tilgung2_euro_mtl',None),
+            laufzeit_jahre=inputs.get('laufzeit2_jahre',None),
+            modus=inputs.get('modus_d2','tilgungssatz')
+        )
         pdf.set_font("DejaVuSans", "B", 10)
         pdf.cell(0, 7, "Darlehen II:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVuSans", "", 10)
@@ -115,8 +124,13 @@ def create_pdf_report(results, inputs):
         if tilgung2 == "" and inputs.get('tilgung2_euro_mtl'):
             tilgung2 = f"{inputs.get('tilgung2_euro_mtl')} € mtl."
         pdf.cell(40, 7, str(tilgung2), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        laufzeit2_anzeige = inputs.get('laufzeit2_jahre')
+        if not laufzeit2_anzeige or laufzeit2_anzeige in [None, '', 0]:
+            laufzeit2_anzeige = f"{d2.get('laufzeit_jahre',''):.1f}" if d2.get('laufzeit_jahre') else ""
         pdf.cell(65, 7, "Laufzeit (Jahre):", border=0)
-        pdf.cell(40, 7, str(inputs.get('laufzeit2_jahre', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(40, 7, str(laufzeit2_anzeige), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(65, 7, "Monatsrate (€):", border=0)
+        pdf.cell(40, 7, format_eur(d2.get('monatsrate', '')), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
     # 3. Detailrechnung & Persönlicher Cashflow (wie gehabt)
