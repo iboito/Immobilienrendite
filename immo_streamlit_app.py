@@ -118,7 +118,7 @@ steuersatz             = st.number_input("Persönl. Steuersatz (%)", min_value=0
 st.subheader("Persönliche Finanzsituation")
 verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
 
-st.divider()  # Nur eine Trennlinie, keine Leerzeile!
+# KEINE Trennlinie hier!
 
 st.subheader("Ergebnisse")
 inputs = {
