@@ -3,6 +3,7 @@ from pathlib import Path
 from PIL import Image
 import immo_core
 import pdf_generator
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
@@ -72,18 +73,13 @@ d1 = berechne_darlehen_details(
     modus=modus_d1
 )
 st.markdown(
-    """
+    f"""
     **Darlehen Übersicht:**
-    - Darlehenssumme: **{summe:,.2f} €**
-    - Rate: **{rate:,.2f} €**
-    - Laufzeit: **{laufzeit:.1f} Jahre**
-    - Tilgungssatz: **{tilgung:.2f} %**
-    """.format(
-        summe=darlehen1_summe,
-        rate=d1['monatsrate'],
-        laufzeit=d1['laufzeit_jahre'],
-        tilgung=d1['tilgung_p_ergebnis']
-    )
+    - Darlehenssumme: **{darlehen1_summe:,.2f} €**
+    - Rate: **{d1['monatsrate']:,.2f} €**
+    - Laufzeit: **{d1['laufzeit_jahre']:.1f} Jahre**
+    - Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**
+    """
 )
 
 # Checkbox für weiteres Darlehen nach dem ersten Darlehen
@@ -113,16 +109,12 @@ if show_darlehen2:
                else 'laufzeit')
     )
     st.markdown(
-        """
+        f"""
         **Darlehen II Übersicht:**
-        - Rate: **{rate:,.2f} €**
-        - Laufzeit: **{laufzeit:.1f} Jahre**
-        - Tilgungssatz: **{tilgung:.2f} %**
-        """.format(
-            rate=d2['monatsrate'],
-            laufzeit=d2['laufzeit_jahre'],
-            tilgung=d2['tilgung_p_ergebnis']
-        )
+        - Rate: **{d2['monatsrate']:,.2f} €**
+        - Laufzeit: **{d2['laufzeit_jahre']:.1f} Jahre**
+        - Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**
+        """
     )
 else:
     zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
@@ -198,9 +190,23 @@ else:
 
     st.subheader("Grafiken")
     c1, c2 = st.columns(2)
+
+    # Dynamische Pie-Labels und Werte
+    pie_labels = []
+    pie_values = []
+    if show_darlehen2 and zins2 and zins2 > 0:
+        pie_labels = ["Darlehen I", "Darlehen II", "Eigenkapital"]
+        # Hier ggf. echte Summe für Darlehen II eintragen!
+        pie_values = [darlehen1_summe, 0, eigenkapital]
+    else:
+        pie_labels = ["Darlehen", "Eigenkapital"]
+        pie_values = [darlehen1_summe, eigenkapital]
+
     with c1:
-        labels = list(results['pie_data'].keys()); sizes = list(results['pie_data'].values())
-        st.pyplot(immo_core.plt_pie(labels, sizes, ret_fig=True))
+        fig, ax = plt.subplots()
+        ax.pie(pie_values, labels=pie_labels, autopct='%1.1f%%', startangle=90)
+        ax.set_title("Finanzierungsstruktur")
+        st.pyplot(fig)
     with c2:
         st.pyplot(immo_core.plt_bar(results['bar_data'], ret_fig=True))
 
@@ -210,7 +216,7 @@ else:
             pdf_generator.create_bank_report(
                 {**results, 'inputs': inputs,
                  'figures': {
-                     'pie': immo_core.plt_pie(labels, sizes, ret_fig=True),
+                     'pie': fig,
                      'bar': immo_core.plt_bar(results['bar_data'], ret_fig=True)
                  }},
                 tmp.name
