@@ -181,7 +181,6 @@ if 'error' in results:
 else:
     st.subheader("Ergebnisse")
 
-    # Alle gewünschten Kennzahlen wie in der GUI
     all_keys = [
         "Einnahmen p.a. (Kaltmiete)",
         "Nicht umlagef. Kosten p.a.",
@@ -196,7 +195,7 @@ else:
         "Gesamt-Cashflow (Ihre persönliche Si)",
         "Ihr monatl. Einkommen (vorher)",
         "+/- Mtl. Cashflow Immobilie",
-        "= Neues verfügbares Einkommen"
+        "= Neues verfügbares Einkommen"  # Jetzt für beide Jahre sichtbar!
     ]
 
     def get_val(key, col):
@@ -223,6 +222,9 @@ else:
             if val != "":
                 style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
                 st.markdown(f"<div style='{style}'>{key}: {val}</div>", unsafe_allow_html=True)
+
+    # Hinweistext für das Anschaffungsjahr
+    st.info("Das neue verfügbare Einkommen im Anschaffungsjahr enthält einmalige Sondereffekte (z.B. absetzbare Kaufnebenkosten). Dieser Wert ist nur im ersten Jahr so hoch und normalisiert sich ab dem Folgejahr.")
 
     # KPIs
     st.subheader("Kennzahlen (KPIs)")
