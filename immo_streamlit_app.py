@@ -98,7 +98,16 @@ def calculate_analytics(inputs):
     zinsen_jahr = darlehen_summe * inputs.get('zins1_prozent', 0) / 100
     darlehen_rueckzahlung_jahr = d1['monatsrate'] * 12
     
-    afa_jahr = kaufpreis * 0.8 * 0.02
+# AfA-Satz abhängig vom Baujahr
+baujahr_kategorie = inputs.get('baujahr_kategorie', '1925 - 2022')
+if baujahr_kategorie == 'vor 1925':
+    afa_satz = 2.5
+elif baujahr_kategorie == 'ab 2023':
+    afa_satz = 3.0
+else:  # '1925 - 2022'
+    afa_satz = 2.0
+
+afa_jahr = kaufpreis * 0.8 * (afa_satz / 100)
     
     verfuegbares_einkommen_mtl = inputs.get('verfuegbares_einkommen_mtl', 0)
     
