@@ -3,8 +3,6 @@ from pathlib import Path
 from datetime import datetime
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
-import matplotlib.pyplot as plt
-import io
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
@@ -170,52 +168,6 @@ def calculate_analytics(inputs):
         'display_table': display_table,
         'finanzkennzahlen': finanzkennzahlen
     }
-
-def create_financing_chart(inputs, nutzungsart):
-    """Erstellt ein Kreisdiagramm der Finanzierungsaufschlüsselung"""
-    kaufpreis = inputs.get('kaufpreis', 0)
-    garage_stellplatz = inputs.get('garage_stellplatz_kosten', 0)
-    invest_bedarf = inputs.get('invest_bedarf', 0)
-    nebenkosten_prozente = inputs.get('nebenkosten_prozente', {})
-    nebenkosten_summe = (kaufpreis + garage_stellplatz) * sum(nebenkosten_prozente.values()) / 100
-    gesamtinvestition = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe
-    eigenkapital = inputs.get('eigenkapital', 0)
-    darlehen_summe = gesamtinvestition - eigenkapital
-    
-    # Daten für das Kreisdiagramm
-    labels = ['Eigenkapital', 'Darlehen']
-    sizes = [eigenkapital, darlehen_summe]
-    colors = ['#2E8B57', '#4682B4']  # Grün für Eigenkapital, Blau für Darlehen
-    explode = (0.05, 0)  # Eigenkapital leicht hervorheben
-    
-    # Angepasste Figurengröße basierend auf Nutzungsart
-    if nutzungsart == "Vermietung":
-        figsize = (6, 8)  # Höher für längere Cashflow-Berechnung
-    else:
-        figsize = (6, 5)  # Kleiner für kürzere Eigennutzung-Berechnung
-    
-    fig, ax = plt.subplots(figsize=figsize)
-    
-    # Kreisdiagramm erstellen
-    wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-                                      startangle=90, explode=explode, shadow=True)
-    
-    # Formatierung
-    ax.set_title('Finanzierungsaufschlüsselung', fontsize=14, fontweight='bold', pad=20)
-    
-    # Legende mit Beträgen
-    legend_labels = [
-        f'Eigenkapital: {format_eur(eigenkapital)}',
-        f'Darlehen: {format_eur(darlehen_summe)}'
-    ]
-    ax.legend(wedges, legend_labels, title="Finanzierung", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
-    
-    # Gesamtinvestition anzeigen
-    plt.figtext(0.5, 0.02, f'Gesamtinvestition: {format_eur(gesamtinvestition)}', 
-                ha='center', fontsize=10, fontweight='bold')
-    
-    plt.tight_layout()
-    return fig
 
 def create_pdf_report(results, inputs, checklist_items):
     pdf = FPDF()
@@ -596,8 +548,8 @@ if results:
             "= Neues verfügbares Einkommen"
         ]
     
-    # Drei-Spalten-Layout: Anschaffungsjahr | Laufende Jahre | Grafik
-    col1, col2, col3 = st.columns([2, 2, 2])
+    # Zwei-Spalten-Layout ohne Grafik
+    col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("#### Jahr der Anschaffung (€)")
@@ -620,12 +572,6 @@ if results:
                     f"<div style='{style}'>{key}: {format_eur(val) if is_number(val) else val}</div>",
                     unsafe_allow_html=True
                 )
-    
-    with col3:
-        st.markdown("#### Finanzierungsaufschlüsselung")
-        chart = create_financing_chart(inputs, nutzungsart)
-        if chart:
-            st.pyplot(chart, use_container_width=True)
     
     if 'finanzkennzahlen' in results and results['finanzkennzahlen']:
         st.subheader("Finanzkennzahlen")
