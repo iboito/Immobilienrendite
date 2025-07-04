@@ -353,8 +353,8 @@ def create_pdf_report(results, inputs, checklist_items):
     checklist_status = inputs.get("checklist_status", {})
     for item in checklist_items:
         checked = checklist_status.get(item, False)
-        box = "☑" if checked else "☐"
-        pdf.cell(0, 7, f"{box} {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        box = "X" if checked else " "
+        pdf.cell(0, 7, f"[{box}] {item}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     
     result = pdf.output()
     if isinstance(result, bytearray):
@@ -510,10 +510,10 @@ st.markdown("Haken Sie ab, welche Dokumente Sie bereits haben:")
 if 'checklist_status' not in st.session_state:
     st.session_state['checklist_status'] = {}
 
-for item in checklist_items:
+for i, item in enumerate(checklist_items):
     st.session_state['checklist_status'][item] = st.checkbox(
         item, 
-        key=f"check_{item}", 
+        key=f"check_{item}_{i}", 
         value=st.session_state['checklist_status'].get(item, False)
     )
 
