@@ -186,6 +186,7 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.set_font("Arial", "", 10)
     pdf.cell(0, 8, f"Erstellt am: {datetime.now().strftime('%d.%m.%Y')}", ln=True)
     pdf.cell(0, 8, f"Objekt in: {inputs.get('wohnort','')}", ln=True)
+    pdf.cell(0, 8, f"Nutzungsart: {inputs.get('nutzungsart','')}", ln=True)
     pdf.ln(5)
     
     # 1. Objektdaten
@@ -234,9 +235,13 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.ln(5)
     
-    # 3. Cashflow-Tabelle - KOMPLETT NEU GESCHRIEBEN
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "3. Cashflow-Analyse", ln=True)
+    # 3. Cashflow-Tabelle - KORRIGIERT: Unterscheidung nach Nutzungsart
+    if inputs.get("nutzungsart") == "Vermietung":
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "3. Cashflow-Analyse (Vermietung)", ln=True)
+    else:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "3. Kostenanalyse (Eigennutzung)", ln=True)
     
     # Tabellen-Header
     pdf.set_font("Arial", "B", 8)
@@ -246,7 +251,7 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.set_font("Arial", "", 8)
     
-    # GARANTIERT ALLE 15 ZEILEN - OHNE AUSNAHMEN
+    # NUR die tatsächlich berechneten Zeilen ausgeben
     zeilen_count = 0
     for row in results['display_table']:
         zeilen_count += 1
@@ -257,11 +262,9 @@ def create_pdf_report(results, inputs, checklist_items):
         val1_raw = row.get('val1', 0)
         val2_raw = row.get('val2', 0)
         
-        # IMMER formatieren - keine Ausnahmen
         val1 = format_eur_pdf(val1_raw)
         val2 = format_eur_pdf(val2_raw)
         
-        # IMMER hinzufügen - keine Bedingungen
         pdf.cell(80, 5, kennzahl, border=1)
         pdf.cell(35, 5, val1, border=1)
         pdf.cell(35, 5, val2, border=1, ln=True)
@@ -269,12 +272,12 @@ def create_pdf_report(results, inputs, checklist_items):
     # DEBUG: Anzahl der Zeilen ausgeben
     pdf.ln(2)
     pdf.set_font("Arial", "", 8)
-    pdf.cell(0, 5, f"DEBUG: {zeilen_count} Zeilen geschrieben", ln=True)
+    pdf.cell(0, 5, f"DEBUG: {zeilen_count} Zeilen geschrieben ({inputs.get('nutzungsart', 'Unbekannt')})", ln=True)
     
     pdf.ln(5)
     
     # 4. Finanzkennzahlen (nur bei Vermietung)
-    if inputs.get("nutzungsart") == "Vermietung" and 'finanzkennzahlen' in results:
+    if inputs.get("nutzungsart") == "Vermietung" and 'finanzkennzahlen' in results and results['finanzkennzahlen']:
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "4. Finanzkennzahlen", ln=True)
         pdf.set_font("Arial", "", 10)
