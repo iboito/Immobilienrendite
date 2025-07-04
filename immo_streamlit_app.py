@@ -8,15 +8,14 @@ st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wi
 
 checklist_items = [
     "Grundbuchauszug",
-    "Energieausweis", 
-    "Teilungserklärung",
-    "Hausverwaltungsunterlagen",
-    "Mietverträge (bei Vermietung)",
-    "Wirtschaftsplan",
-    "Protokolle Eigentümerversammlungen",
-    "Baugenehmigung",
-    "Versicherungsunterlagen",
-    "Finanzierungsbestätigung"
+    "Flurkarte",
+    "Energieausweis",
+    "Teilungserklärung & Gemeinschaftsordnung",
+    "Protokolle der letzten 3–5 Eigentümerversammlungen",
+    "Jahresabrechnung & Wirtschaftsplan",
+    "Höhe der Instandhaltungsrücklage",
+    "Exposé & Grundrisse",
+    "WEG-Protokolle: Hinweise auf Streit, Sanierungen, Rückstände"
 ]
 
 def format_eur(val):
@@ -296,10 +295,10 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.set_font("Arial", "", 10)
     
     checklist_status = inputs.get("checklist_status", {})
-    for item in checklist_items[:8]:
+    for item in checklist_items:
         checked = checklist_status.get(item, False)
         box = "X" if checked else " "
-        item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
+        item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae").replace("–", "-")
         pdf.cell(0, 5, f"[{box}] {item_clean}", ln=True)
     
     pdf_bytes = pdf.output()
