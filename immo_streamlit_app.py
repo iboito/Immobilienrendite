@@ -166,7 +166,7 @@ def calculate_analytics(inputs):
         'finanzkennzahlen': finanzkennzahlen
     }
 
-def create_financing_chart(inputs):
+def create_financing_chart(inputs, nutzungsart):
     """Erstellt ein Kreisdiagramm der Finanzierungsaufschlüsselung"""
     kaufpreis = inputs.get('kaufpreis', 0)
     garage_stellplatz = inputs.get('garage_stellplatz_kosten', 0)
@@ -183,14 +183,20 @@ def create_financing_chart(inputs):
     colors = ['#2E8B57', '#4682B4']  # Grün für Eigenkapital, Blau für Darlehen
     explode = (0.05, 0)  # Eigenkapital leicht hervorheben
     
-    fig, ax = plt.subplots(figsize=(8, 6))
+    # Angepasste Figurengröße basierend auf Nutzungsart
+    if nutzungsart == "Vermietung":
+        figsize = (6, 8)  # Höher für längere Cashflow-Berechnung
+    else:
+        figsize = (6, 5)  # Kleiner für kürzere Eigennutzung-Berechnung
+    
+    fig, ax = plt.subplots(figsize=figsize)
     
     # Kreisdiagramm erstellen
     wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
                                       startangle=90, explode=explode, shadow=True)
     
     # Formatierung
-    ax.set_title('Finanzierungsaufschlüsselung', fontsize=16, fontweight='bold', pad=20)
+    ax.set_title('Finanzierungsaufschlüsselung', fontsize=14, fontweight='bold', pad=20)
     
     # Legende mit Beträgen
     legend_labels = [
@@ -201,7 +207,7 @@ def create_financing_chart(inputs):
     
     # Gesamtinvestition anzeigen
     plt.figtext(0.5, 0.02, f'Gesamtinvestition: {format_eur(gesamtinvestition)}', 
-                ha='center', fontsize=12, fontweight='bold')
+                ha='center', fontsize=10, fontweight='bold')
     
     plt.tight_layout()
     return fig
@@ -560,12 +566,6 @@ results = st.session_state['results']
 if results:
     st.subheader("Ergebnisse")
     
-    # Finanzierungsaufschlüsselung-Chart anzeigen
-    st.subheader("Finanzierungsaufschlüsselung")
-    chart = create_financing_chart(inputs)
-    if chart:
-        st.pyplot(chart)
-    
     if nutzungsart == "Vermietung":
         all_keys = [
             "Einnahmen p.a. (Kaltmiete)",
@@ -597,7 +597,8 @@ if results:
             "= Neues verfügbares Einkommen"
         ]
     
-    col1, col2 = st.columns(2)
+    # Drei-Spalten-Layout: Anschaffungsjahr | Laufende Jahre | Grafik
+    col1, col2, col3 = st.columns([2, 2, 2])
     
     with col1:
         st.markdown("#### Jahr der Anschaffung (€)")
@@ -620,6 +621,12 @@ if results:
                     f"<div style='{style}'>{key}: {format_eur(val) if is_number(val) else val}</div>",
                     unsafe_allow_html=True
                 )
+    
+    with col3:
+        st.markdown("#### Finanzierungsaufschlüsselung")
+        chart = create_financing_chart(inputs, nutzungsart)
+        if chart:
+            st.pyplot(chart, use_container_width=True)
     
     if 'finanzkennzahlen' in results and results['finanzkennzahlen']:
         st.subheader("Finanzkennzahlen")
