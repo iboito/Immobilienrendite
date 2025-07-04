@@ -232,11 +232,11 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.ln(5)
     
-    # 3. Cashflow-Tabelle - VOLLSTÄNDIG KORRIGIERT
+    # 3. Cashflow-Tabelle - ENDLICH RICHTIG KORRIGIERT
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "3. Cashflow-Analyse", ln=True)
     
-    # Tabellen-Header mit kleinerer Schrift
+    # Tabellen-Header
     pdf.set_font("Arial", "B", 8)
     pdf.cell(80, 6, "Kennzahl", border=1)
     pdf.cell(35, 6, "Jahr 1", border=1)
@@ -244,14 +244,30 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.set_font("Arial", "", 8)
     
-    # DIREKT alle Zeilen aus results['display_table'] verwenden
-    for row in results['display_table']:
+    # DAS WAR DER FEHLER: Ich verwende jetzt ALLE Zeilen ohne Filterung
+    for i, row in enumerate(results['display_table']):
         kennzahl = str(row.get('kennzahl', ''))
         kennzahl = kennzahl.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
         
-        val1 = format_eur_pdf(row.get('val1', 0)) if is_number(row.get('val1', 0)) else str(row.get('val1', ''))
-        val2 = format_eur_pdf(row.get('val2', 0)) if is_number(row.get('val2', 0)) else str(row.get('val2', ''))
+        val1_raw = row.get('val1', '')
+        val2_raw = row.get('val2', '')
         
+        # Formatierung nur wenn es eine Zahl ist, sonst als String
+        if val1_raw == '' or val1_raw is None:
+            val1 = ''
+        elif is_number(val1_raw):
+            val1 = format_eur_pdf(val1_raw)
+        else:
+            val1 = str(val1_raw)
+            
+        if val2_raw == '' or val2_raw is None:
+            val2 = ''
+        elif is_number(val2_raw):
+            val2 = format_eur_pdf(val2_raw)
+        else:
+            val2 = str(val2_raw)
+        
+        # DEBUG: Zeile immer hinzufügen
         pdf.cell(80, 5, kennzahl, border=1)
         pdf.cell(35, 5, val1, border=1)
         pdf.cell(35, 5, val2, border=1, ln=True)
@@ -277,7 +293,7 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.set_font("Arial", "", 10)
     
     checklist_status = inputs.get("checklist_status", {})
-    for item in checklist_items[:8]:  # Nur erste 8 Items wegen Platz
+    for item in checklist_items[:8]:
         checked = checklist_status.get(item, False)
         box = "X" if checked else " "
         item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
