@@ -235,7 +235,7 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.ln(5)
     
-    # 3. Cashflow-Tabelle - KORRIGIERT: Unterscheidung nach Nutzungsart
+    # 3. Cashflow-Tabelle
     if inputs.get("nutzungsart") == "Vermietung":
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, "3. Cashflow-Analyse (Vermietung)", ln=True)
@@ -251,12 +251,9 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.set_font("Arial", "", 8)
     
-    # NUR die tatsächlich berechneten Zeilen ausgeben
-    zeilen_count = 0
+    # Alle berechneten Zeilen ausgeben
     for row in results['display_table']:
-        zeilen_count += 1
-        
-        kennzahl = str(row.get('kennzahl', f'Zeile {zeilen_count}'))
+        kennzahl = str(row.get('kennzahl', ''))
         kennzahl = kennzahl.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
         
         val1_raw = row.get('val1', 0)
@@ -268,11 +265,6 @@ def create_pdf_report(results, inputs, checklist_items):
         pdf.cell(80, 5, kennzahl, border=1)
         pdf.cell(35, 5, val1, border=1)
         pdf.cell(35, 5, val2, border=1, ln=True)
-    
-    # DEBUG: Anzahl der Zeilen ausgeben
-    pdf.ln(2)
-    pdf.set_font("Arial", "", 8)
-    pdf.cell(0, 5, f"DEBUG: {zeilen_count} Zeilen geschrieben ({inputs.get('nutzungsart', 'Unbekannt')})", ln=True)
     
     pdf.ln(5)
     
