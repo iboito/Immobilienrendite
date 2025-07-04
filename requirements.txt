@@ -1,6 +1,2 @@
 streamlit
-pillow
-matplotlib
-reportlab
 fpdf2
-plotly-graph_objects==5.22.0
