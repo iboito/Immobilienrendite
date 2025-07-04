@@ -101,45 +101,47 @@ def calculate_analytics(inputs):
     zinsen_jahr = darlehen_summe * inputs.get('zins1_prozent', 0) / 100
     darlehen_rueckzahlung_jahr = d1['monatsrate'] * 12
     
-    afa_jahr = kaufpreis * 0.8 * 0.02
-    
-    if inputs.get('nutzungsart') == 'Vermietung':
-        steuerlicher_gewinn = kaltmiete_jahr - nicht_umlagefaehige_jahr - zinsen_jahr - afa_jahr
-        steuerlicher_gewinn_jahr1 = steuerlicher_gewinn - nebenkosten_summe
-        steuerersparnis_jahr1 = steuerlicher_gewinn_jahr1 * inputs.get('steuersatz', 0) / 100
-        steuerersparnis_laufend = steuerlicher_gewinn * inputs.get('steuersatz', 0) / 100
-        
-        cashflow_vor_steuer = kaltmiete_jahr + umlagefaehige_jahr - nicht_umlagefaehige_jahr - darlehen_rueckzahlung_jahr
-        cashflow_nach_steuer_jahr1 = cashflow_vor_steuer + steuerersparnis_jahr1
-        cashflow_nach_steuer_laufend = cashflow_vor_steuer + steuerersparnis_laufend
-    else:
-        steuerersparnis_jahr1 = 0
-        steuerersparnis_laufend = 0
-        cashflow_nach_steuer_jahr1 = -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr)
-        cashflow_nach_steuer_laufend = cashflow_nach_steuer_jahr1
+    # AfA-Satz ermitteln (wie in immo_core.py)
+    baujahr = inputs.get('baujahr_kategorie', '1925 - 2022')
+    afa_satz = 2.5 if baujahr == 'vor 1925' else 3.0 if baujahr == 'ab 2023' else 2.0
+    afa_jahr = kaufpreis * (afa_satz / 100)
     
     verfuegbares_einkommen_mtl = inputs.get('verfuegbares_einkommen_mtl', 0)
-    mtl_kosten_immobilie = d1['monatsrate'] + nicht_umlagefaehige_jahr / 12
-    neues_verfuegbares_einkommen = verfuegbares_einkommen_mtl - mtl_kosten_immobilie
     
     if inputs.get('nutzungsart') == 'Vermietung':
+        # Korrekte Berechnung wie in immo_core.py
+        cashflow_vor_steuern = kaltmiete_jahr - nicht_umlagefaehige_jahr - darlehen_rueckzahlung_jahr
+        
+        # Steuerberechnung
+        laufende_werbung = zinsen_jahr + nicht_umlagefaehige_jahr + afa_jahr
+        steuerlicher_gewinn_jahr1 = kaltmiete_jahr - (laufende_werbung + nebenkosten_summe)
+        steuerlicher_gewinn_laufend = kaltmiete_jahr - laufende_werbung
+        
+        steuerersparnis_jahr1 = -steuerlicher_gewinn_jahr1 * (inputs.get('steuersatz', 42.0) / 100)
+        steuerersparnis_laufend = -steuerlicher_gewinn_laufend * (inputs.get('steuersatz', 42.0) / 100)
+        
+        cashflow_nach_steuer_jahr1 = cashflow_vor_steuern + steuerersparnis_jahr1
+        cashflow_nach_steuer_laufend = cashflow_vor_steuern + steuerersparnis_laufend
+        
+        # KORRIGIERT: Neues verfügbares Einkommen berechnen
+        neues_verfuegbares_einkommen_jahr1 = verfuegbares_einkommen_mtl + (cashflow_nach_steuer_jahr1 / 12)
+        neues_verfuegbares_einkommen_laufend = verfuegbares_einkommen_mtl + (cashflow_nach_steuer_laufend / 12)
+        
         display_table = [
             {'kennzahl': 'Einnahmen p.a. (Kaltmiete)', 'val1': kaltmiete_jahr, 'val2': kaltmiete_jahr},
             {'kennzahl': 'Umlagefähige Kosten p.a.', 'val1': umlagefaehige_jahr, 'val2': umlagefaehige_jahr},
             {'kennzahl': 'Nicht umlagef. Kosten p.a.', 'val1': -nicht_umlagefaehige_jahr, 'val2': -nicht_umlagefaehige_jahr},
             {'kennzahl': 'Rückzahlung Darlehen p.a.', 'val1': -darlehen_rueckzahlung_jahr, 'val2': -darlehen_rueckzahlung_jahr},
-            {'kennzahl': '- Zinsen p.a.', 'val1': zinsen_jahr, 'val2': zinsen_jahr},
-            {'kennzahl': 'Jährliche Gesamtkosten', 'val1': -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr), 'val2': -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr)},
-            {'kennzahl': '= Cashflow vor Steuern p.a.', 'val1': cashflow_vor_steuer, 'val2': cashflow_vor_steuer},
+            {'kennzahl': '= Cashflow vor Steuern p.a.', 'val1': cashflow_vor_steuern, 'val2': cashflow_vor_steuern},
+            {'kennzahl': '- Zinsen p.a.', 'val1': -zinsen_jahr, 'val2': -zinsen_jahr},
             {'kennzahl': '- AfA p.a.', 'val1': -afa_jahr, 'val2': -afa_jahr},
             {'kennzahl': '- Absetzbare Kaufnebenkosten (Jahr 1)', 'val1': -nebenkosten_summe, 'val2': 0},
-            {'kennzahl': '= Steuerlicher Gewinn/Verlust p.a.', 'val1': steuerlicher_gewinn_jahr1, 'val2': steuerlicher_gewinn},
+            {'kennzahl': '= Steuerlicher Gewinn/Verlust p.a.', 'val1': steuerlicher_gewinn_jahr1, 'val2': steuerlicher_gewinn_laufend},
             {'kennzahl': '+ Steuerersparnis / -last p.a.', 'val1': steuerersparnis_jahr1, 'val2': steuerersparnis_laufend},
             {'kennzahl': '= Effektiver Cashflow n. St. p.a.', 'val1': cashflow_nach_steuer_jahr1, 'val2': cashflow_nach_steuer_laufend},
-            {'kennzahl': 'Gesamt-Cashflow (Ihre persönliche Si)', 'val1': cashflow_nach_steuer_jahr1, 'val2': cashflow_nach_steuer_laufend},
             {'kennzahl': 'Ihr monatl. Einkommen (vorher)', 'val1': verfuegbares_einkommen_mtl, 'val2': verfuegbares_einkommen_mtl},
-            {'kennzahl': '- Mtl. Kosten Immobilie', 'val1': -mtl_kosten_immobilie, 'val2': -mtl_kosten_immobilie},
-            {'kennzahl': '= Neues verfügbares Einkommen', 'val1': neues_verfuegbares_einkommen, 'val2': neues_verfuegbares_einkommen}
+            {'kennzahl': '+/- Mtl. Cashflow Immobilie', 'val1': cashflow_nach_steuer_jahr1 / 12, 'val2': cashflow_nach_steuer_laufend / 12},
+            {'kennzahl': '= Neues verfügbares Einkommen', 'val1': neues_verfuegbares_einkommen_jahr1, 'val2': neues_verfuegbares_einkommen_laufend}
         ]
         
         bruttomietrendite = (kaltmiete_jahr / gesamtinvestition * 100) if gesamtinvestition > 0 else 0
@@ -149,14 +151,17 @@ def calculate_analytics(inputs):
             'Eigenkapitalrendite': eigenkapitalrendite
         }
     else:
+        # Eigennutzung
+        jaehrliche_kosten = darlehen_rueckzahlung_jahr + nicht_umlagefaehige_jahr
+        neues_verfuegbares_einkommen = verfuegbares_einkommen_mtl - (jaehrliche_kosten / 12)
+        
         display_table = [
             {'kennzahl': 'Laufende Kosten p.a.', 'val1': -nicht_umlagefaehige_jahr, 'val2': -nicht_umlagefaehige_jahr},
             {'kennzahl': 'Rückzahlung Darlehen p.a.', 'val1': -darlehen_rueckzahlung_jahr, 'val2': -darlehen_rueckzahlung_jahr},
             {'kennzahl': '- Zinsen p.a.', 'val1': zinsen_jahr, 'val2': zinsen_jahr},
-            {'kennzahl': 'Jährliche Gesamtkosten', 'val1': -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr), 'val2': -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr)},
-            {'kennzahl': 'Gesamt-Cashflow (Ihre persönliche Si)', 'val1': cashflow_nach_steuer_jahr1, 'val2': cashflow_nach_steuer_laufend},
+            {'kennzahl': 'Jährliche Gesamtkosten', 'val1': -jaehrliche_kosten, 'val2': -jaehrliche_kosten},
             {'kennzahl': 'Ihr monatl. Einkommen (vorher)', 'val1': verfuegbares_einkommen_mtl, 'val2': verfuegbares_einkommen_mtl},
-            {'kennzahl': '- Mtl. Kosten Immobilie', 'val1': -mtl_kosten_immobilie, 'val2': -mtl_kosten_immobilie},
+            {'kennzahl': '- Mtl. Kosten Immobilie', 'val1': -jaehrliche_kosten / 12, 'val2': -jaehrliche_kosten / 12},
             {'kennzahl': '= Neues verfügbares Einkommen', 'val1': neues_verfuegbares_einkommen, 'val2': neues_verfuegbares_einkommen}
         ]
         finanzkennzahlen = {}
@@ -325,17 +330,15 @@ def create_pdf_report(results, inputs, checklist_items):
             "Umlagefähige Kosten p.a.",
             "Nicht umlagef. Kosten p.a.",
             "Rückzahlung Darlehen p.a.",
-            "- Zinsen p.a.",
-            "Jährliche Gesamtkosten",
             "= Cashflow vor Steuern p.a.",
+            "- Zinsen p.a.",
             "- AfA p.a.",
             "- Absetzbare Kaufnebenkosten (Jahr 1)",
             "= Steuerlicher Gewinn/Verlust p.a.",
             "+ Steuerersparnis / -last p.a.",
             "= Effektiver Cashflow n. St. p.a.",
-            "Gesamt-Cashflow (Ihre persönliche Si)",
             "Ihr monatl. Einkommen (vorher)",
-            "- Mtl. Kosten Immobilie",
+            "+/- Mtl. Cashflow Immobilie",
             "= Neues verfügbares Einkommen"
         ]
     else:
@@ -344,7 +347,6 @@ def create_pdf_report(results, inputs, checklist_items):
             "Rückzahlung Darlehen p.a.",
             "- Zinsen p.a.",
             "Jährliche Gesamtkosten",
-            "Gesamt-Cashflow (Ihre persönliche Si)",
             "Ihr monatl. Einkommen (vorher)",
             "- Mtl. Kosten Immobilie",
             "= Neues verfügbares Einkommen"
@@ -418,8 +420,8 @@ nutzungsart = st.selectbox(
 
 st.markdown("---")
 
-# 1. Objekt
-st.header("1. Objekt")
+# 1. Objekt & Investition
+st.header("1. Objekt & Investition")
 wohnort = st.text_input("Wohnort", "Nürnberg")
 baujahr = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
 wohnflaeche_qm = st.number_input("Wohnfläche (qm)", min_value=10, max_value=500, value=80)
@@ -572,17 +574,15 @@ if results:
             "Umlagefähige Kosten p.a.",
             "Nicht umlagef. Kosten p.a.",
             "Rückzahlung Darlehen p.a.",
-            "- Zinsen p.a.",
-            "Jährliche Gesamtkosten",
             "= Cashflow vor Steuern p.a.",
+            "- Zinsen p.a.",
             "- AfA p.a.",
             "- Absetzbare Kaufnebenkosten (Jahr 1)",
             "= Steuerlicher Gewinn/Verlust p.a.",
             "+ Steuerersparnis / -last p.a.",
             "= Effektiver Cashflow n. St. p.a.",
-            "Gesamt-Cashflow (Ihre persönliche Si)",
             "Ihr monatl. Einkommen (vorher)",
-            "- Mtl. Kosten Immobilie",
+            "+/- Mtl. Cashflow Immobilie",
             "= Neues verfügbares Einkommen"
         ]
     else:
@@ -591,7 +591,6 @@ if results:
             "Rückzahlung Darlehen p.a.",
             "- Zinsen p.a.",
             "Jährliche Gesamtkosten",
-            "Gesamt-Cashflow (Ihre persönliche Si)",
             "Ihr monatl. Einkommen (vorher)",
             "- Mtl. Kosten Immobilie",
             "= Neues verfügbares Einkommen"
