@@ -99,27 +99,19 @@ def calculate_analytics(inputs):
     zinsen_jahr = darlehen_summe * inputs.get('zins1_prozent', 0) / 100
     darlehen_rueckzahlung_jahr = d1['monatsrate'] * 12
     
-    # AfA-Satz ermitteln (wie in immo_core.py)
-    baujahr = inputs.get('baujahr_kategorie', '1925 - 2022')
-    afa_satz = 2.5 if baujahr == 'vor 1925' else 3.0 if baujahr == 'ab 2023' else 2.0
-    afa_jahr = kaufpreis * (afa_satz / 100)
+    afa_jahr = kaufpreis * 0.8 * 0.02
     
     verfuegbares_einkommen_mtl = inputs.get('verfuegbares_einkommen_mtl', 0)
     
     if inputs.get('nutzungsart') == 'Vermietung':
-        # Korrekte Berechnung wie in immo_core.py
-        cashflow_vor_steuern = kaltmiete_jahr - nicht_umlagefaehige_jahr - darlehen_rueckzahlung_jahr
+        steuerlicher_gewinn = kaltmiete_jahr - nicht_umlagefaehige_jahr - zinsen_jahr - afa_jahr
+        steuerlicher_gewinn_jahr1 = steuerlicher_gewinn - nebenkosten_summe
+        steuerersparnis_jahr1 = steuerlicher_gewinn_jahr1 * inputs.get('steuersatz', 0) / 100
+        steuerersparnis_laufend = steuerlicher_gewinn * inputs.get('steuersatz', 0) / 100
         
-        # Steuerberechnung
-        laufende_werbung = zinsen_jahr + nicht_umlagefaehige_jahr + afa_jahr
-        steuerlicher_gewinn_jahr1 = kaltmiete_jahr - (laufende_werbung + nebenkosten_summe)
-        steuerlicher_gewinn_laufend = kaltmiete_jahr - laufende_werbung
-        
-        steuerersparnis_jahr1 = -steuerlicher_gewinn_jahr1 * (inputs.get('steuersatz', 42.0) / 100)
-        steuerersparnis_laufend = -steuerlicher_gewinn_laufend * (inputs.get('steuersatz', 42.0) / 100)
-        
-        cashflow_nach_steuer_jahr1 = cashflow_vor_steuern + steuerersparnis_jahr1
-        cashflow_nach_steuer_laufend = cashflow_vor_steuern + steuerersparnis_laufend
+        cashflow_vor_steuer = kaltmiete_jahr + umlagefaehige_jahr - nicht_umlagefaehige_jahr - darlehen_rueckzahlung_jahr
+        cashflow_nach_steuer_jahr1 = cashflow_vor_steuer + steuerersparnis_jahr1
+        cashflow_nach_steuer_laufend = cashflow_vor_steuer + steuerersparnis_laufend
         
         # KORRIGIERT: Neues verfügbares Einkommen berechnen
         neues_verfuegbares_einkommen_jahr1 = verfuegbares_einkommen_mtl + (cashflow_nach_steuer_jahr1 / 12)
@@ -130,11 +122,12 @@ def calculate_analytics(inputs):
             {'kennzahl': 'Umlagefähige Kosten p.a.', 'val1': umlagefaehige_jahr, 'val2': umlagefaehige_jahr},
             {'kennzahl': 'Nicht umlagef. Kosten p.a.', 'val1': -nicht_umlagefaehige_jahr, 'val2': -nicht_umlagefaehige_jahr},
             {'kennzahl': 'Rückzahlung Darlehen p.a.', 'val1': -darlehen_rueckzahlung_jahr, 'val2': -darlehen_rueckzahlung_jahr},
-            {'kennzahl': '= Cashflow vor Steuern p.a.', 'val1': cashflow_vor_steuern, 'val2': cashflow_vor_steuern},
-            {'kennzahl': '- Zinsen p.a.', 'val1': -zinsen_jahr, 'val2': -zinsen_jahr},
+            {'kennzahl': '- Zinsen p.a.', 'val1': zinsen_jahr, 'val2': zinsen_jahr},
+            {'kennzahl': 'Jährliche Gesamtkosten', 'val1': -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr), 'val2': -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr)},
+            {'kennzahl': '= Cashflow vor Steuern p.a.', 'val1': cashflow_vor_steuer, 'val2': cashflow_vor_steuer},
             {'kennzahl': '- AfA p.a.', 'val1': -afa_jahr, 'val2': -afa_jahr},
             {'kennzahl': '- Absetzbare Kaufnebenkosten (Jahr 1)', 'val1': -nebenkosten_summe, 'val2': 0},
-            {'kennzahl': '= Steuerlicher Gewinn/Verlust p.a.', 'val1': steuerlicher_gewinn_jahr1, 'val2': steuerlicher_gewinn_laufend},
+            {'kennzahl': '= Steuerlicher Gewinn/Verlust p.a.', 'val1': steuerlicher_gewinn_jahr1, 'val2': steuerlicher_gewinn},
             {'kennzahl': '+ Steuerersparnis / -last p.a.', 'val1': steuerersparnis_jahr1, 'val2': steuerersparnis_laufend},
             {'kennzahl': '= Effektiver Cashflow n. St. p.a.', 'val1': cashflow_nach_steuer_jahr1, 'val2': cashflow_nach_steuer_laufend},
             {'kennzahl': 'Ihr monatl. Einkommen (vorher)', 'val1': verfuegbares_einkommen_mtl, 'val2': verfuegbares_einkommen_mtl},
@@ -149,7 +142,6 @@ def calculate_analytics(inputs):
             'Eigenkapitalrendite': eigenkapitalrendite
         }
     else:
-        # Eigennutzung
         jaehrliche_kosten = darlehen_rueckzahlung_jahr + nicht_umlagefaehige_jahr
         neues_verfuegbares_einkommen = verfuegbares_einkommen_mtl - (jaehrliche_kosten / 12)
         
@@ -173,7 +165,6 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf = FPDF()
     pdf.add_page()
     
-    # Korrigierte format_eur Funktion für PDF
     def format_eur_pdf(val):
         try:
             f = float(str(val).replace(",", "."))
@@ -188,7 +179,6 @@ def create_pdf_report(results, inputs, checklist_items):
         except Exception:
             return str(val)
     
-    # Verwende nur ASCII-kompatible Zeichen
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 12, "Finanzanalyse Immobilieninvestment", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
     
@@ -282,8 +272,9 @@ def create_pdf_report(results, inputs, checklist_items):
             "Umlagefähige Kosten p.a.",
             "Nicht umlagef. Kosten p.a.",
             "Rückzahlung Darlehen p.a.",
-            "= Cashflow vor Steuern p.a.",
             "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.",
             "- AfA p.a.",
             "- Absetzbare Kaufnebenkosten (Jahr 1)",
             "= Steuerlicher Gewinn/Verlust p.a.",
@@ -308,7 +299,6 @@ def create_pdf_report(results, inputs, checklist_items):
         row = next((r for r in results['display_table'] if key in r['kennzahl']), None)
         if row:
             kennzahl = str(row.get('kennzahl', ''))
-            # Ersetze Umlaute für PDF
             kennzahl = kennzahl.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae").replace("ß", "ss")
             val1_raw = row.get('val1', '')
             val2_raw = row.get('val2', '')
@@ -351,7 +341,6 @@ def create_pdf_report(results, inputs, checklist_items):
     for item in checklist_items:
         checked = checklist_status.get(item, False)
         box = "X" if checked else " "
-        # Ersetze Umlaute für PDF
         item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae").replace("ß", "ss")
         pdf.cell(0, 7, f"[{box}] {item_clean}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     
@@ -360,7 +349,6 @@ def create_pdf_report(results, inputs, checklist_items):
         return bytes(result)
     return result
 
-# Titel
 st.title("🏠 Immobilien-Analyse-Tool")
 st.markdown("---")
 
@@ -372,7 +360,6 @@ nutzungsart = st.selectbox(
 
 st.markdown("---")
 
-# 1. Objekt & Investition
 st.header("1. Objekt & Investition")
 wohnort = st.text_input("Wohnort", "Nürnberg")
 baujahr = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
@@ -385,7 +372,6 @@ besonderheiten = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 
 st.markdown("---")
 
-# 2. Finanzierung
 st.header("2. Finanzierung")
 kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, max_value=10_000_000, value=250_000, step=1_000)
 garage_stellplatz = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50_000, value=0, step=1_000)
@@ -440,7 +426,6 @@ st.markdown(
 
 st.markdown("---")
 
-# 3. Laufende Posten & Steuer
 st.header("3. Laufende Posten & Steuer")
 
 if nutzungsart == "Vermietung":
@@ -459,7 +444,6 @@ verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)",
 
 st.markdown("---")
 
-# 4. Checkliste: Wichtige Dokumente
 st.header("4. Checkliste: Wichtige Dokumente")
 st.markdown("Haken Sie ab, welche Dokumente Sie bereits haben:")
 
@@ -526,8 +510,9 @@ if results:
             "Umlagefähige Kosten p.a.",
             "Nicht umlagef. Kosten p.a.",
             "Rückzahlung Darlehen p.a.",
-            "= Cashflow vor Steuern p.a.",
             "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.",
             "- AfA p.a.",
             "- Absetzbare Kaufnebenkosten (Jahr 1)",
             "= Steuerlicher Gewinn/Verlust p.a.",
@@ -548,7 +533,6 @@ if results:
             "= Neues verfügbares Einkommen"
         ]
     
-    # Zwei-Spalten-Layout ohne Grafik
     col1, col2 = st.columns(2)
     
     with col1:
