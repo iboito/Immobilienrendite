@@ -296,8 +296,9 @@ def create_pdf_report(results, inputs, checklist_items):
         item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
         pdf.cell(0, 5, f"[{box}] {item_clean}", ln=True)
     
-    # FINAL KORRIGIERT: Nur dest='S' ohne encode()
-    return pdf.output(dest='S')
+    # DIE ECHTE LÖSUNG: bytearray zu bytes konvertieren
+    pdf_bytes = pdf.output()
+    return bytes(pdf_bytes)
 
 st.title("🏠 Immobilien-Analyse-Tool")
 st.markdown("---")
