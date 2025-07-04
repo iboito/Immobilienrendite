@@ -1,7 +1,5 @@
 import streamlit as st
 from pathlib import Path
-from PIL import Image
-import matplotlib.pyplot as plt
 from datetime import datetime
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
@@ -43,7 +41,6 @@ def is_number(val):
     except:
         return False
 
-# Ersatz für immo_core Funktionen
 def berechne_darlehen_details(summe, zins, tilgung_p=None, tilgung_euro_mtl=None, laufzeit_jahre=None, modus='tilgungssatz'):
     if modus == 'tilgungssatz' and tilgung_p:
         monatsrate = summe * (zins + tilgung_p) / 100 / 12
@@ -77,7 +74,6 @@ def berechne_darlehen_details(summe, zins, tilgung_p=None, tilgung_euro_mtl=None
         return {'monatsrate': 0, 'laufzeit_jahre': 0, 'tilgung_p_ergebnis': 0}
 
 def calculate_analytics(inputs):
-    # Grundberechnungen
     kaufpreis = inputs.get('kaufpreis', 0)
     garage_stellplatz = inputs.get('garage_stellplatz_kosten', 0)
     invest_bedarf = inputs.get('invest_bedarf', 0)
@@ -87,7 +83,6 @@ def calculate_analytics(inputs):
     eigenkapital = inputs.get('eigenkapital', 0)
     darlehen_summe = gesamtinvestition - eigenkapital
     
-    # Darlehen Details
     d1 = berechne_darlehen_details(
         darlehen_summe,
         inputs.get('zins1_prozent', 0),
@@ -97,23 +92,17 @@ def calculate_analytics(inputs):
         modus=inputs.get('modus_d1', 'tilgungssatz')
     )
     
-    # Einnahmen und Ausgaben
     kaltmiete_jahr = inputs.get('kaltmiete_monatlich', 0) * 12
     umlagefaehige_jahr = inputs.get('umlagefaehige_kosten_monatlich', 0) * 12
     nicht_umlagefaehige_jahr = inputs.get('nicht_umlagefaehige_kosten_pa', 0)
     
-    # Darlehen Kosten
     zinsen_jahr = darlehen_summe * inputs.get('zins1_prozent', 0) / 100
-    tilgung_jahr = d1['monatsrate'] * 12 - zinsen_jahr
     darlehen_rueckzahlung_jahr = d1['monatsrate'] * 12
     
-    # AfA Berechnung (2% vom Gebäudewert, angenommen 80% des Kaufpreises)
     afa_jahr = kaufpreis * 0.8 * 0.02
     
-    # Steuerberechnung
     if inputs.get('nutzungsart') == 'Vermietung':
         steuerlicher_gewinn = kaltmiete_jahr - nicht_umlagefaehige_jahr - zinsen_jahr - afa_jahr
-        # Jahr 1: zusätzlich absetzbare Kaufnebenkosten
         steuerlicher_gewinn_jahr1 = steuerlicher_gewinn - nebenkosten_summe
         steuerersparnis_jahr1 = steuerlicher_gewinn_jahr1 * inputs.get('steuersatz', 0) / 100
         steuerersparnis_laufend = steuerlicher_gewinn * inputs.get('steuersatz', 0) / 100
@@ -127,12 +116,10 @@ def calculate_analytics(inputs):
         cashflow_nach_steuer_jahr1 = -(nicht_umlagefaehige_jahr + darlehen_rueckzahlung_jahr)
         cashflow_nach_steuer_laufend = cashflow_nach_steuer_jahr1
     
-    # Persönliche Finanzsituation
     verfuegbares_einkommen_mtl = inputs.get('verfuegbares_einkommen_mtl', 0)
     mtl_kosten_immobilie = d1['monatsrate'] + nicht_umlagefaehige_jahr / 12
     neues_verfuegbares_einkommen = verfuegbares_einkommen_mtl - mtl_kosten_immobilie
     
-    # Display Table erstellen
     if inputs.get('nutzungsart') == 'Vermietung':
         display_table = [
             {'kennzahl': 'Einnahmen p.a. (Kaltmiete)', 'val1': kaltmiete_jahr, 'val2': kaltmiete_jahr},
@@ -152,6 +139,13 @@ def calculate_analytics(inputs):
             {'kennzahl': '- Mtl. Kosten Immobilie', 'val1': -mtl_kosten_immobilie, 'val2': -mtl_kosten_immobilie},
             {'kennzahl': '= Neues verfügbares Einkommen', 'val1': neues_verfuegbares_einkommen, 'val2': neues_verfuegbares_einkommen}
         ]
+        
+        bruttomietrendite = (kaltmiete_jahr / gesamtinvestition * 100) if gesamtinvestition > 0 else 0
+        eigenkapitalrendite = (cashflow_nach_steuer_laufend / eigenkapital * 100) if eigenkapital > 0 else 0
+        finanzkennzahlen = {
+            'Bruttomietrendite': bruttomietrendite,
+            'Eigenkapitalrendite': eigenkapitalrendite
+        }
     else:
         display_table = [
             {'kennzahl': 'Laufende Kosten p.a.', 'val1': -nicht_umlagefaehige_jahr, 'val2': -nicht_umlagefaehige_jahr},
@@ -163,16 +157,6 @@ def calculate_analytics(inputs):
             {'kennzahl': '- Mtl. Kosten Immobilie', 'val1': -mtl_kosten_immobilie, 'val2': -mtl_kosten_immobilie},
             {'kennzahl': '= Neues verfügbares Einkommen', 'val1': neues_verfuegbares_einkommen, 'val2': neues_verfuegbares_einkommen}
         ]
-    
-    # Finanzkennzahlen
-    if inputs.get('nutzungsart') == 'Vermietung':
-        bruttomietrendite = (kaltmiete_jahr / gesamtinvestition * 100) if gesamtinvestition > 0 else 0
-        eigenkapitalrendite = (cashflow_nach_steuer_laufend / eigenkapital * 100) if eigenkapital > 0 else 0
-        finanzkennzahlen = {
-            'Bruttomietrendite': bruttomietrendite,
-            'Eigenkapitalrendite': eigenkapitalrendite
-        }
-    else:
         finanzkennzahlen = {}
     
     return {
@@ -184,7 +168,6 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf = FPDF()
     pdf.add_page()
     
-    # Verwende Standard-Fonts
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 12, "Finanzanalyse Immobilieninvestment", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
     
@@ -193,7 +176,6 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.cell(0, 8, f"Analyse für Objekt in: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
     
-    # 1. Objekt- & Investmentübersicht
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "1. Objekt- & Investmentübersicht", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Arial", "", 10)
@@ -223,7 +205,6 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.ln(2)
     
-    # 2. Finanzierungsstruktur & Darlehensdetails
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "2. Finanzierungsstruktur & Darlehensdetails", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Arial", "", 10)
@@ -235,7 +216,6 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.cell(65, 7, "Fremdkapital (Darlehen):", border=0)
     pdf.cell(40, 7, format_eur(fk), border=0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     
-    # Darlehen I Details
     d1 = berechne_darlehen_details(
         fk,
         inputs.get('zins1_prozent',0),
@@ -267,7 +247,6 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.ln(2)
     
-    # 3. Detailrechnung & Persönlicher Cashflow
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "3. Detailrechnung & Persönlicher Cashflow", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Arial", "B", 10)
@@ -328,7 +307,6 @@ def create_pdf_report(results, inputs, checklist_items):
             pdf.cell(35, 7, val1, border=1)
             pdf.cell(35, 7, val2, border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     
-    # 4. Finanzkennzahlen
     if 'finanzkennzahlen' in results and results['finanzkennzahlen']:
         pdf.ln(3)
         pdf.set_font("Arial", "B", 12)
@@ -344,7 +322,6 @@ def create_pdf_report(results, inputs, checklist_items):
             pdf.cell(80, 7, k, border=1)
             pdf.cell(35, 7, str(v), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     
-    # 5. Checkliste
     pdf.ln(3)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "5. Checkliste: Wichtige Dokumente", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
@@ -361,13 +338,7 @@ def create_pdf_report(results, inputs, checklist_items):
         return bytes(result)
     return result
 
-# Titel und Icon
-try:
-    icon_path = Path(__file__).with_name("10751558.png")
-    st.image(Image.open(icon_path).resize((64, 64)))
-except Exception:
-    pass
-
+# Titel
 st.title("🏠 Immobilien-Analyse-Tool (Streamlit Edition)")
 st.markdown("---")
 
@@ -425,24 +396,6 @@ else:
     laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1)
     tilgung1, tilg_eur1 = None, None
 
-show_darlehen2 = st.checkbox("Weiteres Darlehen hinzufügen")
-if show_darlehen2:
-    st.subheader("Darlehen II")
-    zins2 = st.number_input("Zins II (%)", min_value=0.0, max_value=10.0, value=0.0, step=0.05)
-    tilgung2_modus = st.selectbox("Tilgungsmodus II", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"])
-    
-    if tilgung2_modus.startswith("Tilgungssatz"):
-        tilgung2 = st.number_input("Tilgung II (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
-        tilg_eur2, laufzeit2 = None, None
-    elif tilgung2_modus.startswith("Tilgungsbetrag"):
-        tilg_eur2 = st.number_input("Tilgung II (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
-        tilgung2, laufzeit2 = None, None
-    else:
-        laufzeit2 = st.number_input("Laufzeit II (Jahre)", min_value=1, max_value=50, value=25, step=1)
-        tilgung2, tilg_eur2 = None, None
-else:
-    zins2 = tilgung2 = tilg_eur2 = laufzeit2 = tilgung2_modus = None
-
 modus_d1 = 'tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung1_modus.startswith("Tilgungsbetrag") else 'laufzeit'
 d1 = berechne_darlehen_details(
     darlehen1_summe,
@@ -462,24 +415,6 @@ st.markdown(
 - Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**
 """
 )
-
-if show_darlehen2:
-    d2 = berechne_darlehen_details(
-        0,
-        zins2,
-        tilgung_p=tilgung2,
-        tilgung_euro_mtl=tilg_eur2,
-        laufzeit_jahre=laufzeit2,
-        modus=('tilgungssatz' if tilgung2_modus and tilgung2_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung2_modus and tilgung2_modus.startswith("Tilgungsbetrag") else 'laufzeit')
-    )
-    st.markdown(
-        f"""
-**Darlehen II Übersicht:**
-- Rate: **{d2['monatsrate']:,.2f} €**
-- Laufzeit: **{d2['laufzeit_jahre']:.1f} Jahre**
-- Tilgungssatz: **{d2['tilgung_p_ergebnis']:.2f} %**
-"""
-    )
 
 st.markdown("---")
 
@@ -506,7 +441,6 @@ st.markdown("---")
 st.header("4. Checkliste: Wichtige Dokumente")
 st.markdown("Haken Sie ab, welche Dokumente Sie bereits haben:")
 
-# Interaktive Checkliste-Status speichern
 if 'checklist_status' not in st.session_state:
     st.session_state['checklist_status'] = {}
 
@@ -542,12 +476,6 @@ inputs = {
     'tilgung1_prozent': tilgung1 if tilgung1_modus.startswith("Tilgungssatz") else None,
     'tilgung1_euro_mtl': tilg_eur1 if tilgung1_modus.startswith("Tilgungsbetrag") else None,
     'laufzeit1_jahre': laufzeit1 if tilgung1_modus.startswith("Laufzeit") else None,
-    'darlehen2_summe': 0,
-    'zins2_prozent': zins2,
-    'modus_d2': ('tilgungssatz' if tilgung2_modus and tilgung2_modus.startswith("Tilgungssatz") else 'tilgung_euro' if tilgung2_modus and tilgung2_modus.startswith("Tilgungsbetrag") else 'laufzeit'),
-    'tilgung2_prozent': tilgung2,
-    'tilgung2_euro_mtl': tilg_eur2,
-    'laufzeit2_jahre': laufzeit2,
     'kaltmiete_monatlich': kaltmiete_monatlich,
     'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
     'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
@@ -563,11 +491,7 @@ if 'pdf_bytes' not in st.session_state:
 
 if st.button("Analyse berechnen"):
     results = calculate_analytics(inputs)
-    if 'error' in results:
-        st.session_state['results'] = None
-        st.error(results['error'])
-    else:
-        st.session_state['results'] = results
+    st.session_state['results'] = results
 
 results = st.session_state['results']
 
@@ -605,7 +529,7 @@ if results:
             "= Neues verfügbares Einkommen"
         ]
     
-    col1, col2, col3 = st.columns([2.5, 2.5, 1])
+    col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("#### Jahr der Anschaffung (€)")
@@ -629,7 +553,6 @@ if results:
                     unsafe_allow_html=True
                 )
     
-    # Finanzkennzahlen anzeigen
     if 'finanzkennzahlen' in results and results['finanzkennzahlen']:
         st.subheader("Finanzkennzahlen")
         for k, v in results['finanzkennzahlen'].items():
@@ -638,7 +561,6 @@ if results:
             else:
                 st.markdown(f"**{k}:** {v}")
     
-    # PDF-Erstellung
     if st.button("PDF-Bericht erstellen"):
         try:
             pdf_bytes = create_pdf_report(results, inputs, checklist_items)
