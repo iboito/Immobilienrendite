@@ -232,29 +232,47 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.ln(5)
     
-    # 3. Cashflow-Tabelle
+    # 3. Cashflow-Tabelle - VOLLSTÄNDIG KORRIGIERT
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "3. Cashflow-Analyse", ln=True)
     
-    # Tabellen-Header
-    pdf.set_font("Arial", "B", 9)
-    pdf.cell(80, 8, "Kennzahl", border=1)
-    pdf.cell(35, 8, "Jahr 1", border=1)
-    pdf.cell(35, 8, "Laufende Jahre", border=1, ln=True)
+    # Tabellen-Header mit kleinerer Schrift
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(80, 6, "Kennzahl", border=1)
+    pdf.cell(35, 6, "Jahr 1", border=1)
+    pdf.cell(35, 6, "Laufende Jahre", border=1, ln=True)
     
-    pdf.set_font("Arial", "", 9)
+    pdf.set_font("Arial", "", 8)
     
-    # Wichtigste Cashflow-Zeilen
-    wichtige_zeilen = [
-        "Einnahmen p.a. (Kaltmiete)" if inputs.get("nutzungsart") == "Vermietung" else "Laufende Kosten p.a.",
-        "Nicht umlagef. Kosten p.a." if inputs.get("nutzungsart") == "Vermietung" else "Rückzahlung Darlehen p.a.",
-        "Rückzahlung Darlehen p.a." if inputs.get("nutzungsart") == "Vermietung" else "- Zinsen p.a.",
-        "= Cashflow vor Steuern p.a." if inputs.get("nutzungsart") == "Vermietung" else "Jährliche Gesamtkosten",
-        "= Effektiver Cashflow n. St. p.a." if inputs.get("nutzungsart") == "Vermietung" else "Ihr monatl. Einkommen (vorher)",
-        "Ihr monatl. Einkommen (vorher)",
-        "+/- Mtl. Cashflow Immobilie" if inputs.get("nutzungsart") == "Vermietung" else "- Mtl. Kosten Immobilie",
-        "= Neues verfügbares Einkommen"
-    ]
+    # KORRIGIERT: Vollständige Liste aller Cashflow-Zeilen wie in Streamlit
+    if inputs.get("nutzungsart") == "Vermietung":
+        wichtige_zeilen = [
+            "Einnahmen p.a. (Kaltmiete)",
+            "Umlagefähige Kosten p.a.",
+            "Nicht umlagef. Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.",
+            "- AfA p.a.",
+            "- Absetzbare Kaufnebenkosten (Jahr 1)",
+            "= Steuerlicher Gewinn/Verlust p.a.",
+            "+ Steuerersparnis / -last p.a.",
+            "= Effektiver Cashflow n. St. p.a.",
+            "Ihr monatl. Einkommen (vorher)",
+            "+/- Mtl. Cashflow Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
+    else:
+        wichtige_zeilen = [
+            "Laufende Kosten p.a.",
+            "Rückzahlung Darlehen p.a.",
+            "- Zinsen p.a.",
+            "Jährliche Gesamtkosten",
+            "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie",
+            "= Neues verfügbares Einkommen"
+        ]
     
     for zeile in wichtige_zeilen:
         row = next((r for r in results['display_table'] if zeile in r['kennzahl']), None)
@@ -265,9 +283,9 @@ def create_pdf_report(results, inputs, checklist_items):
             val1 = format_eur_pdf(row.get('val1', 0)) if is_number(row.get('val1', 0)) else str(row.get('val1', ''))
             val2 = format_eur_pdf(row.get('val2', 0)) if is_number(row.get('val2', 0)) else str(row.get('val2', ''))
             
-            pdf.cell(80, 6, kennzahl, border=1)
-            pdf.cell(35, 6, val1, border=1)
-            pdf.cell(35, 6, val2, border=1, ln=True)
+            pdf.cell(80, 5, kennzahl, border=1)
+            pdf.cell(35, 5, val1, border=1)
+            pdf.cell(35, 5, val2, border=1, ln=True)
     
     pdf.ln(5)
     
@@ -296,7 +314,6 @@ def create_pdf_report(results, inputs, checklist_items):
         item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
         pdf.cell(0, 5, f"[{box}] {item_clean}", ln=True)
     
-    # DIE ECHTE LÖSUNG: bytearray zu bytes konvertieren
     pdf_bytes = pdf.output()
     return bytes(pdf_bytes)
 
