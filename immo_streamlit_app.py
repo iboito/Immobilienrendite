@@ -8,7 +8,7 @@ from fpdf.enums import XPos, YPos
 
 st.set_page_config(page_title="Immobilien-Analyse", page_icon="🏠", layout="wide")
 
-# Checkliste Items definieren
+# Checkliste Items definieren (MUSS am Anfang stehen!)
 checklist_items = [
     "Grundbuchauszug",
     "Energieausweis", 
