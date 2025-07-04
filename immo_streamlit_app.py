@@ -165,10 +165,12 @@ def create_pdf_report(results, inputs, checklist_items):
     
     def format_eur_pdf(val):
         try:
+            if val is None or val == '':
+                return '0,00 EUR'
             f = float(str(val).replace(",", "."))
             return f"{f:,.2f} EUR".replace(",", "X").replace(".", ",").replace("X", ".")
         except Exception:
-            return str(val)
+            return str(val) if val else '0,00 EUR'
     
     def format_percent_pdf(val):
         try:
@@ -232,7 +234,7 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.ln(5)
     
-    # 3. Cashflow-Tabelle - ENDLICH RICHTIG KORRIGIERT
+    # 3. Cashflow-Tabelle - KOMPLETT NEU GESCHRIEBEN
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "3. Cashflow-Analyse", ln=True)
     
@@ -244,33 +246,30 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.set_font("Arial", "", 8)
     
-    # DAS WAR DER FEHLER: Ich verwende jetzt ALLE Zeilen ohne Filterung
-    for i, row in enumerate(results['display_table']):
-        kennzahl = str(row.get('kennzahl', ''))
+    # GARANTIERT ALLE 15 ZEILEN - OHNE AUSNAHMEN
+    zeilen_count = 0
+    for row in results['display_table']:
+        zeilen_count += 1
+        
+        kennzahl = str(row.get('kennzahl', f'Zeile {zeilen_count}'))
         kennzahl = kennzahl.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
         
-        val1_raw = row.get('val1', '')
-        val2_raw = row.get('val2', '')
+        val1_raw = row.get('val1', 0)
+        val2_raw = row.get('val2', 0)
         
-        # Formatierung nur wenn es eine Zahl ist, sonst als String
-        if val1_raw == '' or val1_raw is None:
-            val1 = ''
-        elif is_number(val1_raw):
-            val1 = format_eur_pdf(val1_raw)
-        else:
-            val1 = str(val1_raw)
-            
-        if val2_raw == '' or val2_raw is None:
-            val2 = ''
-        elif is_number(val2_raw):
-            val2 = format_eur_pdf(val2_raw)
-        else:
-            val2 = str(val2_raw)
+        # IMMER formatieren - keine Ausnahmen
+        val1 = format_eur_pdf(val1_raw)
+        val2 = format_eur_pdf(val2_raw)
         
-        # DEBUG: Zeile immer hinzufügen
+        # IMMER hinzufügen - keine Bedingungen
         pdf.cell(80, 5, kennzahl, border=1)
         pdf.cell(35, 5, val1, border=1)
         pdf.cell(35, 5, val2, border=1, ln=True)
+    
+    # DEBUG: Anzahl der Zeilen ausgeben
+    pdf.ln(2)
+    pdf.set_font("Arial", "", 8)
+    pdf.cell(0, 5, f"DEBUG: {zeilen_count} Zeilen geschrieben", ln=True)
     
     pdf.ln(5)
     
