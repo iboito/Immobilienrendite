@@ -296,7 +296,7 @@ def create_pdf_report(results, inputs, checklist_items):
         item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
         pdf.cell(0, 5, f"[{box}] {item_clean}", ln=True)
     
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output()
 
 st.title("🏠 Immobilien-Analyse-Tool")
 st.markdown("---")
