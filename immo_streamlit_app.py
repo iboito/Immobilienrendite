@@ -296,7 +296,9 @@ def create_pdf_report(results, inputs, checklist_items):
         item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
         pdf.cell(0, 5, f"[{box}] {item_clean}", ln=True)
     
-    return pdf.output()
+    # KORRIGIERT: Konvertiere bytearray zu bytes
+    pdf_output = pdf.output()
+    return bytes(pdf_output)
 
 st.title("🏠 Immobilien-Analyse-Tool")
 st.markdown("---")
@@ -316,10 +318,10 @@ besonderheiten = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 
 st.markdown("---")
 st.header("2. Finanzierung")
-kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, max_value=10_000_000, value=250_000, step=1_000)
-garage_stellplatz = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50_000, value=0, step=1_000)
-invest_bedarf = st.number_input("Zusätzl. Investitionsbedarf (€)", min_value=0, max_value=1_000_000, value=10_000, step=1_000)
-eigenkapital = st.number_input("Eigenkapital (€)", min_value=0, max_value=10_000_000, value=80_000, step=1_000)
+kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, max_value=10000000, value=250000, step=1000)
+garage_stellplatz = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50000, value=0, step=1000)
+invest_bedarf = st.number_input("Zusätzl. Investitionsbedarf (€)", min_value=0, max_value=1000000, value=10000, step=1000)
+eigenkapital = st.number_input("Eigenkapital (€)", min_value=0, max_value=10000000, value=80000, step=1000)
 
 st.subheader("Kaufnebenkosten (%)")
 grunderwerbsteuer = st.number_input("Grunderwerbsteuer %", min_value=0.0, max_value=15.0, value=3.5, step=0.1)
@@ -341,7 +343,7 @@ if tilgung1_modus.startswith("Tilgungssatz"):
     tilgung1 = st.number_input("Tilgung (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
     tilg_eur1, laufzeit1 = None, None
 elif tilgung1_modus.startswith("Tilgungsbetrag"):
-    tilg_eur1 = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50_000, value=350, step=50)
+    tilg_eur1 = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50000, value=350, step=50)
     tilgung1, laufzeit1 = None, None
 else:
     laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1)
@@ -362,18 +364,18 @@ st.markdown("---")
 st.header("3. Laufende Posten & Steuer")
 
 if nutzungsart == "Vermietung":
-    kaltmiete_monatlich = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10_000, value=1_000, step=50)
-    umlagefaehige_monat = st.number_input("Umlagefähige Kosten (€ mtl.)", min_value=0, max_value=1_000, value=150, step=10)
-    nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10_000, value=960, step=10)
+    kaltmiete_monatlich = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10000, value=1000, step=50)
+    umlagefaehige_monat = st.number_input("Umlagefähige Kosten (€ mtl.)", min_value=0, max_value=1000, value=150, step=10)
+    nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10000, value=960, step=10)
 else:
     kaltmiete_monatlich = 0
     umlagefaehige_monat = 0
-    nicht_umlagefaehige_pa = st.number_input("Laufende Kosten p.a. (Hausgeld etc.)", min_value=0, max_value=10_000, value=960, step=10)
+    nicht_umlagefaehige_pa = st.number_input("Laufende Kosten p.a. (Hausgeld etc.)", min_value=0, max_value=10000, value=960, step=10)
 
 steuersatz = st.number_input("Persönl. Steuersatz (%)", min_value=0.0, max_value=100.0, value=42.0, step=0.5)
 
 st.subheader("Persönliche Finanzsituation")
-verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100_000, value=2_500, step=100)
+verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100000, value=2500, step=100)
 
 st.markdown("---")
 st.header("4. Checkliste: Wichtige Dokumente")
