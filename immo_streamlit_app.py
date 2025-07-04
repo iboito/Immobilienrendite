@@ -244,48 +244,17 @@ def create_pdf_report(results, inputs, checklist_items):
     
     pdf.set_font("Arial", "", 8)
     
-    # KORRIGIERT: Vollständige Liste aller Cashflow-Zeilen wie in Streamlit
-    if inputs.get("nutzungsart") == "Vermietung":
-        wichtige_zeilen = [
-            "Einnahmen p.a. (Kaltmiete)",
-            "Umlagefähige Kosten p.a.",
-            "Nicht umlagef. Kosten p.a.",
-            "Rückzahlung Darlehen p.a.",
-            "- Zinsen p.a.",
-            "Jährliche Gesamtkosten",
-            "= Cashflow vor Steuern p.a.",
-            "- AfA p.a.",
-            "- Absetzbare Kaufnebenkosten (Jahr 1)",
-            "= Steuerlicher Gewinn/Verlust p.a.",
-            "+ Steuerersparnis / -last p.a.",
-            "= Effektiver Cashflow n. St. p.a.",
-            "Ihr monatl. Einkommen (vorher)",
-            "+/- Mtl. Cashflow Immobilie",
-            "= Neues verfügbares Einkommen"
-        ]
-    else:
-        wichtige_zeilen = [
-            "Laufende Kosten p.a.",
-            "Rückzahlung Darlehen p.a.",
-            "- Zinsen p.a.",
-            "Jährliche Gesamtkosten",
-            "Ihr monatl. Einkommen (vorher)",
-            "- Mtl. Kosten Immobilie",
-            "= Neues verfügbares Einkommen"
-        ]
-    
-    for zeile in wichtige_zeilen:
-        row = next((r for r in results['display_table'] if zeile in r['kennzahl']), None)
-        if row:
-            kennzahl = str(row.get('kennzahl', ''))
-            kennzahl = kennzahl.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
-            
-            val1 = format_eur_pdf(row.get('val1', 0)) if is_number(row.get('val1', 0)) else str(row.get('val1', ''))
-            val2 = format_eur_pdf(row.get('val2', 0)) if is_number(row.get('val2', 0)) else str(row.get('val2', ''))
-            
-            pdf.cell(80, 5, kennzahl, border=1)
-            pdf.cell(35, 5, val1, border=1)
-            pdf.cell(35, 5, val2, border=1, ln=True)
+    # DIREKT alle Zeilen aus results['display_table'] verwenden
+    for row in results['display_table']:
+        kennzahl = str(row.get('kennzahl', ''))
+        kennzahl = kennzahl.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
+        
+        val1 = format_eur_pdf(row.get('val1', 0)) if is_number(row.get('val1', 0)) else str(row.get('val1', ''))
+        val2 = format_eur_pdf(row.get('val2', 0)) if is_number(row.get('val2', 0)) else str(row.get('val2', ''))
+        
+        pdf.cell(80, 5, kennzahl, border=1)
+        pdf.cell(35, 5, val1, border=1)
+        pdf.cell(35, 5, val2, border=1, ln=True)
     
     pdf.ln(5)
     
