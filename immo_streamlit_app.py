@@ -170,15 +170,133 @@ def create_pdf_report(results, inputs, checklist_items):
         except Exception:
             return str(val)
     
+    def format_percent_pdf(val):
+        try:
+            f = float(val)
+            return f"{f:.2f} %"
+        except Exception:
+            return str(val)
+    
+    # Header
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 12, "Finanzanalyse Immobilieninvestment", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+    pdf.cell(0, 12, "Finanzanalyse Immobilieninvestment", ln=True, align='C')
     
     pdf.set_font("Arial", "", 10)
-    pdf.cell(0, 8, f"Erstellt am: {datetime.now().strftime('%d.%m.%Y')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.cell(0, 8, f"Objekt in: {inputs.get('wohnort','')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 8, f"Erstellt am: {datetime.now().strftime('%d.%m.%Y')}", ln=True)
+    pdf.cell(0, 8, f"Objekt in: {inputs.get('wohnort','')}", ln=True)
+    pdf.ln(5)
     
-    result = pdf.output()
-    return bytes(result) if isinstance(result, bytearray) else result
+    # 1. Objektdaten
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "1. Objektdaten", ln=True)
+    pdf.set_font("Arial", "", 10)
+    
+    objektdaten = [
+        ("Baujahr:", inputs.get('baujahr_kategorie', '')),
+        ("Wohnflaeche (qm):", str(inputs.get('wohnflaeche_qm', ''))),
+        ("Zimmeranzahl:", str(inputs.get('zimmeranzahl', ''))),
+        ("Stockwerk:", str(inputs.get('stockwerk', ''))),
+        ("Energieeffizienz:", str(inputs.get('energieeffizienz', ''))),
+        ("OEPNV-Anbindung:", str(inputs.get('oepnv_anbindung', ''))),
+        ("Besonderheiten:", str(inputs.get('besonderheiten', ''))),
+        ("Kaufpreis:", format_eur_pdf(inputs.get('kaufpreis', 0))),
+        ("Eigenkapital:", format_eur_pdf(inputs.get('eigenkapital', 0)))
+    ]
+    
+    for label, wert in objektdaten:
+        pdf.cell(60, 6, label, border=0)
+        pdf.cell(60, 6, str(wert), border=0, ln=True)
+    
+    pdf.ln(5)
+    
+    # 2. Finanzierung
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "2. Finanzierung", ln=True)
+    pdf.set_font("Arial", "", 10)
+    
+    nebenkosten_summe = (inputs.get('kaufpreis',0) + inputs.get('garage_stellplatz_kosten',0)) * sum(inputs.get('nebenkosten_prozente',{}).values())/100
+    gesamtinvest = inputs.get('kaufpreis',0) + inputs.get('garage_stellplatz_kosten',0) + inputs.get('invest_bedarf',0) + nebenkosten_summe
+    darlehen = gesamtinvest - inputs.get('eigenkapital',0)
+    
+    finanzierung = [
+        ("Gesamtinvestition:", format_eur_pdf(gesamtinvest)),
+        ("Eigenkapital:", format_eur_pdf(inputs.get('eigenkapital',0))),
+        ("Darlehen:", format_eur_pdf(darlehen)),
+        ("Zinssatz:", format_percent_pdf(inputs.get('zins1_prozent', 0))),
+        ("Tilgungssatz:", format_percent_pdf(inputs.get('tilgung1_prozent', 0) or 0))
+    ]
+    
+    for label, wert in finanzierung:
+        pdf.cell(60, 6, label, border=0)
+        pdf.cell(60, 6, str(wert), border=0, ln=True)
+    
+    pdf.ln(5)
+    
+    # 3. Cashflow-Tabelle
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "3. Cashflow-Analyse", ln=True)
+    
+    # Tabellen-Header
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(80, 8, "Kennzahl", border=1)
+    pdf.cell(35, 8, "Jahr 1", border=1)
+    pdf.cell(35, 8, "Laufende Jahre", border=1, ln=True)
+    
+    pdf.set_font("Arial", "", 9)
+    
+    # Wichtigste Cashflow-Zeilen
+    wichtige_zeilen = [
+        "Einnahmen p.a. (Kaltmiete)" if inputs.get("nutzungsart") == "Vermietung" else "Laufende Kosten p.a.",
+        "Nicht umlagef. Kosten p.a." if inputs.get("nutzungsart") == "Vermietung" else "Rückzahlung Darlehen p.a.",
+        "Rückzahlung Darlehen p.a." if inputs.get("nutzungsart") == "Vermietung" else "- Zinsen p.a.",
+        "= Cashflow vor Steuern p.a." if inputs.get("nutzungsart") == "Vermietung" else "Jährliche Gesamtkosten",
+        "= Effektiver Cashflow n. St. p.a." if inputs.get("nutzungsart") == "Vermietung" else "Ihr monatl. Einkommen (vorher)",
+        "Ihr monatl. Einkommen (vorher)",
+        "+/- Mtl. Cashflow Immobilie" if inputs.get("nutzungsart") == "Vermietung" else "- Mtl. Kosten Immobilie",
+        "= Neues verfügbares Einkommen"
+    ]
+    
+    for zeile in wichtige_zeilen:
+        row = next((r for r in results['display_table'] if zeile in r['kennzahl']), None)
+        if row:
+            kennzahl = str(row.get('kennzahl', ''))
+            kennzahl = kennzahl.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
+            
+            val1 = format_eur_pdf(row.get('val1', 0)) if is_number(row.get('val1', 0)) else str(row.get('val1', ''))
+            val2 = format_eur_pdf(row.get('val2', 0)) if is_number(row.get('val2', 0)) else str(row.get('val2', ''))
+            
+            pdf.cell(80, 6, kennzahl, border=1)
+            pdf.cell(35, 6, val1, border=1)
+            pdf.cell(35, 6, val2, border=1, ln=True)
+    
+    pdf.ln(5)
+    
+    # 4. Finanzkennzahlen (nur bei Vermietung)
+    if inputs.get("nutzungsart") == "Vermietung" and 'finanzkennzahlen' in results:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "4. Finanzkennzahlen", ln=True)
+        pdf.set_font("Arial", "", 10)
+        
+        for k, v in results['finanzkennzahlen'].items():
+            wert = format_percent_pdf(v) if "rendite" in k.lower() else str(v)
+            pdf.cell(60, 6, k + ":", border=0)
+            pdf.cell(60, 6, wert, border=0, ln=True)
+        
+        pdf.ln(5)
+    
+    # 5. Checkliste
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "5. Checkliste", ln=True)
+    pdf.set_font("Arial", "", 10)
+    
+    checklist_status = inputs.get("checklist_status", {})
+    for item in checklist_items[:8]:  # Nur erste 8 Items wegen Platz
+        checked = checklist_status.get(item, False)
+        box = "X" if checked else " "
+        item_clean = item.replace("ü", "ue").replace("ö", "oe").replace("ä", "ae")
+        pdf.cell(0, 5, f"[{box}] {item_clean}", ln=True)
+    
+    return pdf.output(dest='S').encode('latin-1')
 
 st.title("🏠 Immobilien-Analyse-Tool")
 st.markdown("---")
@@ -259,6 +377,7 @@ verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)",
 
 st.markdown("---")
 st.header("4. Checkliste: Wichtige Dokumente")
+st.markdown("Haken Sie ab, welche Dokumente Sie bereits haben:")
 
 if 'checklist_status' not in st.session_state:
     st.session_state['checklist_status'] = {}
