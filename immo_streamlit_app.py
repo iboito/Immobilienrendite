@@ -166,32 +166,42 @@ def calculate_analytics(inputs):
         'finanzkennzahlen': finanzkennzahlen
     }
 
-def create_cashflow_chart(results, nutzungsart):
-    if nutzungsart != "Vermietung":
-        return None
-        
-    fig, ax = plt.subplots(figsize=(10, 6))
+def create_financing_chart(inputs):
+    """Erstellt ein Kreisdiagramm der Finanzierungsaufschlüsselung"""
+    kaufpreis = inputs.get('kaufpreis', 0)
+    garage_stellplatz = inputs.get('garage_stellplatz_kosten', 0)
+    invest_bedarf = inputs.get('invest_bedarf', 0)
+    nebenkosten_prozente = inputs.get('nebenkosten_prozente', {})
+    nebenkosten_summe = (kaufpreis + garage_stellplatz) * sum(nebenkosten_prozente.values()) / 100
+    gesamtinvestition = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe
+    eigenkapital = inputs.get('eigenkapital', 0)
+    darlehen_summe = gesamtinvestition - eigenkapital
     
-    # Beispiel-Daten für 10 Jahre
-    jahre = list(range(1, 11))
-    cashflow_data = []
+    # Daten für das Kreisdiagramm
+    labels = ['Eigenkapital', 'Darlehen']
+    sizes = [eigenkapital, darlehen_summe]
+    colors = ['#2E8B57', '#4682B4']  # Grün für Eigenkapital, Blau für Darlehen
+    explode = (0.05, 0)  # Eigenkapital leicht hervorheben
     
-    # Vereinfachte Cashflow-Berechnung
-    for jahr in jahre:
-        if jahr == 1:
-            cf = next((r['val1'] for r in results['display_table'] if '= Effektiver Cashflow' in r['kennzahl']), 0)
-        else:
-            cf = next((r['val2'] for r in results['display_table'] if '= Effektiver Cashflow' in r['kennzahl']), 0)
-        cashflow_data.append(cf)
+    fig, ax = plt.subplots(figsize=(8, 6))
     
-    ax.bar(jahre, cashflow_data, color='steelblue', alpha=0.7)
-    ax.set_xlabel('Jahre')
-    ax.set_ylabel('Cashflow (€)')
-    ax.set_title('Cashflow-Entwicklung über 10 Jahre')
-    ax.grid(True, alpha=0.3)
+    # Kreisdiagramm erstellen
+    wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+                                      startangle=90, explode=explode, shadow=True)
     
-    # Formatiere Y-Achse
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:,.0f} €'))
+    # Formatierung
+    ax.set_title('Finanzierungsaufschlüsselung', fontsize=16, fontweight='bold', pad=20)
+    
+    # Legende mit Beträgen
+    legend_labels = [
+        f'Eigenkapital: {format_eur(eigenkapital)}',
+        f'Darlehen: {format_eur(darlehen_summe)}'
+    ]
+    ax.legend(wedges, legend_labels, title="Finanzierung", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+    
+    # Gesamtinvestition anzeigen
+    plt.figtext(0.5, 0.02, f'Gesamtinvestition: {format_eur(gesamtinvestition)}', 
+                ha='center', fontsize=12, fontweight='bold')
     
     plt.tight_layout()
     return fig
@@ -550,6 +560,12 @@ results = st.session_state['results']
 if results:
     st.subheader("Ergebnisse")
     
+    # Finanzierungsaufschlüsselung-Chart anzeigen
+    st.subheader("Finanzierungsaufschlüsselung")
+    chart = create_financing_chart(inputs)
+    if chart:
+        st.pyplot(chart)
+    
     if nutzungsart == "Vermietung":
         all_keys = [
             "Einnahmen p.a. (Kaltmiete)",
@@ -612,13 +628,6 @@ if results:
                 st.markdown(f"**{k}:** {format_percent(v)}")
             else:
                 st.markdown(f"**{k}:** {v}")
-    
-    # Cashflow-Chart hinzufügen
-    if nutzungsart == "Vermietung":
-        st.subheader("Cashflow-Entwicklung")
-        chart = create_cashflow_chart(results, nutzungsart)
-        if chart:
-            st.pyplot(chart)
     
     if st.button("PDF-Bericht erstellen"):
         try:
