@@ -336,7 +336,7 @@ def create_pdf_report(results, inputs, checklist_items):
 
     # 4. Finanzkennzahlen (nur bei Vermietung)
     if inputs.get("nutzungsart") == "Vermietung" and 'finanzkennzahlen' in results and results['finanzkennzahlen']:
-        pdf.set_font("Arial", "B", 12
+        pdf.set_font("Arial", "B", 12)
     # 4. Finanzkennzahlen (nur bei Vermietung)
     if inputs.get("nutzungsart") == "Vermietung" and 'finanzkennzahlen' in results and results['finanzkennzahlen']:
         pdf.set_font("Arial", "B", 12)
