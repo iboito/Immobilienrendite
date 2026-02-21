@@ -369,75 +369,252 @@ def create_pdf_report(results, inputs, checklist_items):
 # ═════════════════════════════════════════════════════════════════════════════
 # STREAMLIT UI
 # ═════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════
+# AB HIER: Nur UI-Block — Rechenfunktionen bleiben unverändert
+# ═════════════════════════════════════════════════════════════════════════════
 
 st.title("🏠 Immobilien-Analyse-Tool")
 st.markdown("---")
 
-nutzungsart = st.selectbox("Nutzungsart wählen", ["Vermietung", "Eigennutzung"], index=0)
+# ─────────────────────────────────────────────────────────────────────────────
+# WELCOME: Erklärung für neue Nutzer
+# ─────────────────────────────────────────────────────────────────────────────
+with st.expander("ℹ️ Wie funktioniert dieses Tool? (Erklärung für Einsteiger)", expanded=False):
+    st.markdown("""
+    Dieses Tool hilft Ihnen, eine Immobilie **als Investment zu bewerten** — bevor Sie zum Notar gehen.
 
+    **So gehen Sie vor:**
+    1. **Nutzungsart wählen**: Wollen Sie die Wohnung vermieten oder selbst einziehen?
+    2. **Objektdaten eingeben**: Baujahr, Lage, Größe — beeinflusst Steuer & Kosten.
+    3. **Finanzierung ausfüllen**: Kaufpreis, Eigenkapital, Zins und Tilgung.
+    4. **Laufende Kosten angeben**: Was kostet die Wohnung im laufenden Betrieb?
+    5. **Analyse berechnen**: Das Tool zeigt Ihnen, wie sich die Immobilie auf Ihren Geldbeutel auswirkt.
+
+    **Die wichtigsten Ergebnisse:**
+    - 📊 **Cashflow vor Steuern**: Was bleibt monatlich übrig, *bevor* das Finanzamt beteiligt ist?
+    - 💰 **Cashflow nach Steuern**: Der realistische Wert — viele Vermietungen, die vor Steuern negativ sind, werden durch Steuerersparnisse neutral oder positiv.
+    - 📈 **Bruttomietrendite**: Faustregel — unter 4% ist in den meisten Lagen unattraktiv.
+    - 🏦 **Eigenkapitalrendite**: Richtwert: >10% = gut, >20% = sehr gut.
+    """)
+
+nutzungsart = st.selectbox(
+    "Nutzungsart wählen",
+    ["Vermietung", "Eigennutzung"],
+    index=0,
+    help="Vermietung = steuerliche Abschreibung (AfA) und Cashflow-Analyse. Eigennutzung = reine Kostenübersicht."
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SEKTION 1: Objekt & Investition
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.header("1. Objekt & Investition")
-wohnort = st.text_input("Wohnort", "Nürnberg")
-baujahr = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"])
-wohnflaeche_qm = st.number_input("Wohnfläche (qm)", min_value=10, max_value=500, value=80)
-stockwerk = st.selectbox("Stockwerk", ["EG", "1", "2", "3", "4", "5", "6", "DG"])
-zimmeranzahl = st.selectbox("Zimmeranzahl", ["1", "1,5", "2", "2,5", "3", "3,5", "4", "4,5", "5"], index=4)
-energieeffizienz = st.selectbox("Energieeffizienz", ["A+", "A", "B", "C", "D", "E", "F", "G", "H"], index=2)
-oepnv_anbindung = st.selectbox("ÖPNV-Anbindung", ["Sehr gut", "Gut", "Okay"])
-besonderheiten = st.text_input("Besonderheiten", "Balkon, Einbauküche")
 
+with st.expander("ℹ️ Warum sind diese Daten wichtig?", expanded=False):
+    st.markdown("""
+    - **Baujahr** bestimmt den **AfA-Satz** (steuerliche Abschreibung): Vor 1925 → 2,5%, 1925–2022 → 2%, ab 2023 → 3% pro Jahr.
+    - **Energieeffizienz** ist seit 2023 relevant für die **CO₂-Kostenaufteilung**: Bei Klassen D–H zahlt der Vermieter einen Teil der CO₂-Steuer (nicht auf den Mieter umlegbar).
+    - **Wohnfläche** wird für die private Instandhaltungsrücklage verwendet (€/m²/Monat).
+    """)
+
+wohnort = st.text_input(
+    "Wohnort / Stadtteil",
+    "Nürnberg",
+    help="Tragen Sie den Stadtteil ein (z.B. 'Nürnberg – Johannis'). Beeinflusst keine Berechnung, erscheint aber im PDF-Bericht."
+)
+baujahr = st.selectbox(
+    "Baujahr",
+    ["1925 - 2022", "vor 1925", "ab 2023"],
+    help="Bestimmt den AfA-Satz: vor 1925 = 2,5% | 1925–2022 = 2,0% | ab 2023 = 3,0% (§ 7 Abs. 4 EStG). Gilt nur für den Gebäudeanteil, nicht für den Boden."
+)
+wohnflaeche_qm = st.number_input(
+    "Wohnfläche (m²)",
+    min_value=10, max_value=500, value=80,
+    help="Wird für die Berechnung der privaten Instandhaltungsrücklage (€/m²/Monat) in Sektion 3 verwendet."
+)
+stockwerk = st.selectbox(
+    "Stockwerk",
+    ["EG", "1", "2", "3", "4", "5", "6", "DG"],
+    help="Reine Dokumentation für den PDF-Bericht. EG-Wohnungen haben oft höhere Einbruchsgefahr, DG-Wohnungen ggf. Dachschäden."
+)
+zimmeranzahl = st.selectbox(
+    "Zimmeranzahl",
+    ["1", "1,5", "2", "2,5", "3", "3,5", "4", "4,5", "5"],
+    index=4,
+    help="Für die Dokumentation. 2–3 Zimmer gelten als besonders vermieterfreundlich (hohe Nachfrage, geringes Leerstandsrisiko)."
+)
+energieeffizienz = st.selectbox(
+    "Energieeffizienz",
+    ["A+", "A", "B", "C", "D", "E", "F", "G", "H"],
+    index=2,
+    help="Ab Klasse D zahlt der Vermieter einen steigenden Anteil der CO₂-Steuer (CO₂KostAufG). Klasse A+/A/B = kein oder minimaler Vermieteranteil."
+)
+
+if energieeffizienz in ["D", "E", "F", "G", "H"]:
+    st.warning(
+        f"⚠️ **Energieeffizienz {energieeffizienz}:** Bei dieser Klasse zahlt der Vermieter "
+        "einen gesetzlich geregelten Anteil der CO₂-Steuer (§ CO₂KostAufG). "
+        "Dieser Betrag ist **nicht auf den Mieter umlegbar** und mindert Ihren Cashflow. "
+        "Lassen Sie diesen Betrag separat kalkulieren oder planen Sie einen Puffer ein."
+    )
+
+oepnv_anbindung = st.selectbox(
+    "ÖPNV-Anbindung",
+    ["Sehr gut", "Gut", "Okay"],
+    help="Dokumentation für den PDF-Bericht. Gute ÖPNV-Anbindung reduziert das Leerstandsrisiko und stützt langfristig den Wiederverkaufspreis."
+)
+besonderheiten = st.text_input(
+    "Besonderheiten",
+    "Balkon, Einbauküche",
+    help="Freitext für den PDF-Bericht (z.B. Balkon, Einbauküche, Stellplatz, Aufzug)."
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SEKTION 2: Finanzierung
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.header("2. Finanzierung")
-kaufpreis = st.number_input("Kaufpreis (€)", min_value=0, max_value=10000000, value=250000, step=1000)
-garage_stellplatz = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50000, value=0, step=1000)
-invest_bedarf = st.number_input("Zusätzl. Investitionsbedarf (€)", min_value=0, max_value=1000000, value=10000, step=1000)
-eigenkapital = st.number_input("Eigenkapital (€)", min_value=0, max_value=10000000, value=80000, step=1000)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# FEHLER 1 – NEU: Gebäudeanteil als Eingabefeld
-# Vorher: pauschale 80% hardcoded in calculate_analytics()
-# Jetzt:  Der Nutzer gibt den tatsächlichen Gebäudeanteil ein.
-# Hinweis: In Nürnberg (Gute Lage) liegt der Bodenanteil oft bei 30–50%.
-# ─────────────────────────────────────────────────────────────────────────────
+with st.expander("ℹ️ Was ist der Unterschied zwischen Kaufpreis und Gesamtinvestition?", expanded=False):
+    st.markdown("""
+    Der **Kaufpreis** ist nur der Anfang. Zur **Gesamtinvestition** kommen noch dazu:
+    - **Kaufnebenkosten**: Grunderwerbsteuer, Notar, Grundbuch, ggf. Makler — in Bayern typisch **ca. 9–10%** des Kaufpreises.
+    - **Investitionsbedarf**: Renovierungen oder Modernisierungen, die Sie direkt nach dem Kauf planen.
+    - **Garage/Stellplatz**: Falls separat erworben.
+
+    💡 **Tipp:** Die Kaufnebenkosten werden im Jahr 1 steuerlich abgesetzt (bei Vermietung), mindern also die Steuerlast im ersten Jahr spürbar.
+    """)
+
+kaufpreis = st.number_input(
+    "Kaufpreis (€)",
+    min_value=0, max_value=10000000, value=250000, step=1000,
+    help="Reiner Kaufpreis laut Kaufvertrag, ohne Nebenkosten. Basis für die AfA-Berechnung und die Renditekennzahlen."
+)
+garage_stellplatz = st.number_input(
+    "Garage/Stellplatz (€)",
+    min_value=0, max_value=50000, value=0, step=1000,
+    help="Wird zur Kaufpreisbasis für die Nebenkosten addiert. Stellplätze sind separat nicht AfA-fähig (kein Gebäude)."
+)
+invest_bedarf = st.number_input(
+    "Zusätzl. Investitionsbedarf (€)",
+    min_value=0, max_value=1000000, value=10000, step=1000,
+    help="Geplante Renovierungen nach dem Kauf (z.B. Küche, Bad, Böden). Erhöht die Darlehenssumme, kann aber teilweise steuerlich als Werbungskosten abgesetzt werden."
+)
+eigenkapital = st.number_input(
+    "Eigenkapital (€)",
+    min_value=0, max_value=10000000, value=80000, step=1000,
+    help="Der Betrag, den Sie selbst einbringen (ohne Kredit). Faustregel: Mindestens die Kaufnebenkosten (~10%) sollten aus Eigenkapital stammen."
+)
+
+# FEHLER 1 – Gebäudeanteil
 st.info(
-    "💡 **Gebäudeanteil für AfA:** Nur der Gebäudeanteil (nicht Grund & Boden) "
-    "ist steuerlich abschreibbar (§ 7 Abs. 4 EStG). "
-    "In Nürnberg (gute Lagen) liegt der Bodenanteil oft bei 30–50%."
+    "💡 **AfA-Basis (Gebäudeanteil):** Nur das Gebäude — nicht der Grund & Boden — ist steuerlich abschreibbar (§ 7 Abs. 4 EStG). "
+    "In Nürnberg (gute Lagen wie Johannis, Nordstadt) kann der **Bodenanteil 30–50%** des Kaufpreises ausmachen. "
+    "Den aktuellen Bodenrichtwert finden Sie auf [boris.bayern.de](https://www.boris.bayern.de)."
 )
 gebaeude_anteil_prozent = st.slider(
-    "Gebäudeanteil am Kaufpreis (%) — AfA-Basis",  # [FEHLER 1 - NEU]
+    "Gebäudeanteil am Kaufpreis (%) — AfA-Basis",
     min_value=40, max_value=95, value=80, step=5,
-    help="Bodenanteil = 100% minus dieser Wert. Bodenrichtwert für Nürnberg: boris.bayern.de"
+    help="100% minus dieser Wert = Bodenanteil (nicht abschreibbar). Beispiel: 70% Gebäude → 30% Boden. Je niedriger dieser Wert, desto geringer Ihre jährliche AfA und desto schlechter der steuerliche Vorteil."
 )
 st.caption(
-    f"→ AfA-Basis: {kaufpreis * gebaeude_anteil_prozent / 100:,.0f} € "
-    f"| Bodenanteil: {kaufpreis * (100 - gebaeude_anteil_prozent) / 100:,.0f} € (nicht abschreibbar)"
+    f"→ AfA-Basis: **{kaufpreis * gebaeude_anteil_prozent / 100:,.0f} €** "
+    f"| Bodenanteil (nicht abschreibbar): **{kaufpreis * (100 - gebaeude_anteil_prozent) / 100:,.0f} €**"
 )
 
 st.subheader("Kaufnebenkosten (%)")
-grunderwerbsteuer = st.number_input("Grunderwerbsteuer %", min_value=0.0, max_value=15.0, value=3.5, step=0.1)
-notar = st.number_input("Notar %", min_value=0.0, max_value=10.0, value=1.5, step=0.1)
-grundbuch = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
-makler = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01)
+
+with st.expander("ℹ️ Was sind Kaufnebenkosten?", expanded=False):
+    st.markdown("""
+    Kaufnebenkosten sind **einmalige Kosten** beim Erwerb einer Immobilie:
+    | Kostenart | Bayern | Andere Bundesländer |
+    |---|---|---|
+    | Grunderwerbsteuer | **3,5%** | 5,0–6,5% (z.B. NRW, Hessen) |
+    | Notar | **~1,5%** | ~1,5% (bundesweit ähnlich) |
+    | Grundbuch | **~0,5%** | ~0,5% |
+    | Makler | **~3,57%** | 0–3,57% (je nach Vereinbarung) |
+
+    **Steuerlich:** Bei Vermietung sind die Kaufnebenkosten als Werbungskosten absetzbar — **im Jahr 1** werden sie in diesem Tool steuermindernd berücksichtigt.
+    """)
+
+grunderwerbsteuer = st.number_input(
+    "Grunderwerbsteuer %",
+    min_value=0.0, max_value=15.0, value=3.5, step=0.1,
+    help="Bayern: 3,5% (Stand 2026). NRW, Hessen: 6,5%. Bitte an Ihr Bundesland anpassen."
+)
+notar = st.number_input(
+    "Notar %",
+    min_value=0.0, max_value=10.0, value=1.5, step=0.1,
+    help="Bundesweit ca. 1,0–2,0% des Kaufpreises. Umfasst Beurkundung des Kaufvertrags und weitere notarielle Leistungen."
+)
+grundbuch = st.number_input(
+    "Grundbuch %",
+    min_value=0.0, max_value=10.0, value=0.5, step=0.1,
+    help="Kosten für die Eintragung ins Grundbuch (Eigentumsübertragung + Grundschuld). Ca. 0,5% des Kaufpreises."
+)
+makler = st.number_input(
+    "Makler %",
+    min_value=0.0, max_value=10.0, value=3.57, step=0.01,
+    help="Seit 2020 teilen sich Käufer und Verkäufer die Maklerprovision (max. 3,57% je Seite inkl. MwSt.). Bei Direktkauf vom Eigentümer: 0%."
+)
 
 nebenkosten_summe = (kaufpreis + garage_stellplatz) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
 gesamtfinanzierung = kaufpreis + garage_stellplatz + invest_bedarf + nebenkosten_summe
 darlehen1_summe = gesamtfinanzierung - eigenkapital
 
-st.subheader("Darlehen")
-st.info(f"**Automatisch berechnete Darlehenssumme:** {darlehen1_summe:,.2f} €")
+st.caption(
+    f"Kaufnebenkosten gesamt: **{nebenkosten_summe:,.0f} €** "
+    f"({grunderwerbsteuer + notar + grundbuch + makler:.2f}% des Kaufpreises) "
+    f"| Gesamtinvestition: **{gesamtfinanzierung:,.0f} €**"
+)
 
-zins1 = st.number_input("Zins (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05)
-tilgung1_modus = st.selectbox("Tilgungsmodus", ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
+st.subheader("Darlehen")
+st.info(f"**Automatisch berechnete Darlehenssumme:** {darlehen1_summe:,.2f} € *(Gesamtinvestition minus Eigenkapital)*")
+
+zins1 = st.number_input(
+    "Zins (%)",
+    min_value=0.0, max_value=10.0, value=3.5, step=0.05,
+    help="Aktueller Bauzins für Ihre Zinsbindungsperiode (z.B. 10 oder 15 Jahre). Achtung: Nach Ablauf der Zinsbindung muss neu verhandelt werden — kalkulieren Sie konservativ."
+)
+
+with st.expander("ℹ️ Welchen Tilgungsmodus soll ich wählen?", expanded=False):
+    st.markdown("""
+    - **Tilgungssatz (%)**: Klassisch. Sie geben an, wie viel % des Darlehens Sie jährlich tilgen möchten. 
+      Üblich: 2–3%. Je höher, desto schneller schuldenfrei, aber höhere Monatsrate.
+    - **Tilgungsbetrag (€ mtl.)**: Sie kennen Ihre maximale Monatsrate und geben diese direkt ein.
+    - **Laufzeit (Jahre)**: Sie wissen, bis wann das Darlehen abbezahlt sein soll — die Rate wird berechnet.
+
+    ⚠️ **Wichtig:** Die angezeigte Laufzeit ist eine **Annuitätsberechnung** (mathematisch korrekt).
+    Bei 3,5% Zins und 2% Tilgung sind Sie in ca. **29 Jahren** schuldenfrei — nicht in 50!
+    """)
+
+tilgung1_modus = st.selectbox(
+    "Tilgungsmodus",
+    ["Tilgungssatz (%)", "Tilgungsbetrag (€ mtl.)", "Laufzeit (Jahre)"],
+    index=0,
+    help="Wählen Sie, wie Sie Ihre Rückzahlung definieren möchten."
+)
 
 if tilgung1_modus.startswith("Tilgungssatz"):
-    tilgung1 = st.number_input("Tilgung (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+    tilgung1 = st.number_input(
+        "Tilgung (%)",
+        min_value=0.0, max_value=10.0, value=2.0, step=0.1,
+        help="Anfangstilgungssatz p.a. Empfehlung: mind. 2%. Bei 1% dauert die Rückzahlung sehr lange und Sie zahlen deutlich mehr Zinsen."
+    )
     tilg_eur1, laufzeit1 = None, None
 elif tilgung1_modus.startswith("Tilgungsbetrag"):
-    tilg_eur1 = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50000, value=350, step=50)
+    tilg_eur1 = st.number_input(
+        "Tilgung (€ mtl.)",
+        min_value=0, max_value=50000, value=350, step=50,
+        help="Ihre gewünschte monatliche Gesamtrate (Zins + Tilgung). Muss höher sein als der monatliche Zinsanteil, sonst tilgen Sie nichts."
+    )
     tilgung1, laufzeit1 = None, None
 else:
-    laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1)
+    laufzeit1 = st.number_input(
+        "Laufzeit (Jahre)",
+        min_value=1, max_value=50, value=25, step=1,
+        help="Gewünschte Laufzeit bis zur vollständigen Rückzahlung. Die monatliche Rate wird automatisch berechnet."
+    )
     tilgung1, tilg_eur1 = None, None
 
 modus_d1 = ('tilgungssatz' if tilgung1_modus.startswith("Tilgungssatz")
@@ -452,53 +629,132 @@ d1 = berechne_darlehen_details(
 st.markdown(f"""
 **Darlehen Übersicht:**
 - Darlehenssumme: **{darlehen1_summe:,.2f} €**
-- Rate: **{d1['monatsrate']:,.2f} €**
-- Laufzeit: **{d1['laufzeit_jahre']:.1f} Jahre** *(Annuitätsberechnung)*
+- Monatliche Rate: **{d1['monatsrate']:,.2f} €**
+- Laufzeit (Annuität): **{d1['laufzeit_jahre']:.1f} Jahre**
 - Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**
 """)
+st.caption("ℹ️ Die Laufzeit ist eine Annuitätsberechnung. Zinsbindung ≠ Laufzeit — nach Ablauf der Zinsbindung (z.B. 10 Jahre) muss zu dann geltenden Konditionen neu finanziert werden.")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SEKTION 3: Laufende Posten & Steuer
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.header("3. Laufende Posten & Steuer")
 
-if nutzungsart == "Vermietung":
-    kaltmiete_monatlich = st.number_input("Kaltmiete mtl. (€)", min_value=0, max_value=10000, value=1000, step=50)
-    umlagefaehige_monat = st.number_input("Umlagefähige Kosten (€ mtl.)", min_value=0, max_value=1000, value=150, step=10)
-    nicht_umlagefaehige_pa = st.number_input("Nicht umlagef. Kosten p.a. (€)", min_value=0, max_value=10000, value=960, step=10)
+with st.expander("ℹ️ Welche Kosten gibt es und was ist umlagefähig?", expanded=False):
+    st.markdown("""
+    **Umlagefähige Kosten** werden auf den Mieter umgelegt (über die Nebenkostenabrechnung):
+    → Heizung, Wasser, Hausmeister, Versicherung (Gebäude), Müll, etc.
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # FEHLER 3 – NEU: Risikopositionen
-    # ─────────────────────────────────────────────────────────────────────────
-    st.subheader("Risikoabschläge (konservative Planung)")
-    mietausfallwagnis_p = st.slider(
-        "Mietausfallwagnis (% der Jahreskaltmiete)",  # [FEHLER 3 - NEU]
-        min_value=0.0, max_value=10.0, value=3.0, step=0.5,
-        help="Standard: 2–4%. Deckt Leerstand bei Mieterwechsel ab (1–2 Monate/Jahr)."
+    **Nicht umlagefähige Kosten** trägt der Vermieter selbst:
+    → Hausgeld-Anteile (Instandhaltungsrücklage WEG), Verwaltungsgebühren, Kontoführung, ggf. CO₂-Steueranteil
+
+    **Steuerlich absetzbar** sind bei Vermietung:
+    → Zinsen, Instandhaltung, Verwaltungskosten, AfA, Kaufnebenkosten (Jahr 1)
+    → *Nicht absetzbar:* Tilgung (das ist Vermögensaufbau, kein Aufwand)
+
+    **Persönlicher Steuersatz:** Verwenden Sie Ihren **Grenzsteuersatz** (nicht den Durchschnittssatz).
+    Bei 60.000€ zu versteuerndem Einkommen liegt dieser bei ca. 42%.
+    """)
+
+if nutzungsart == "Vermietung":
+    kaltmiete_monatlich = st.number_input(
+        "Kaltmiete mtl. (€)",
+        min_value=0, max_value=10000, value=1000, step=50,
+        help="Nur die Kaltmiete — ohne Nebenkosten (Heizung, Wasser etc.). Die Nebenkosten werden separat als 'umlagefähige Kosten' erfasst."
     )
+    umlagefaehige_monat = st.number_input(
+        "Umlagefähige Kosten (€ mtl.)",
+        min_value=0, max_value=1000, value=150, step=10,
+        help="Betriebskosten, die Sie vom Mieter als Vorauszahlung einziehen und an Versorger weitergeben (Heizung, Wasser, Hausmeister etc.). Durchlaufposten — kein Gewinn, kein Verlust."
+    )
+    nicht_umlagefaehige_pa = st.number_input(
+        "Nicht umlagef. Kosten p.a. (€)",
+        min_value=0, max_value=10000, value=960, step=10,
+        help="Kosten, die Sie als Vermieter selbst tragen: WEG-Hausgeldanteil (Instandhaltungsrücklage, Verwaltung), Kontoführung, ggf. Steuerberatung. Typisch: 80–150€/Monat bei einer Eigentumswohnung."
+    )
+
+    st.subheader("Risikoabschläge (konservative Planung)")
+    st.caption("Diese Positionen fehlen in vielen vereinfachten Rechnern — sie sind aber entscheidend für eine realistische Einschätzung.")
+
+    mietausfallwagnis_p = st.slider(
+        "Mietausfallwagnis (% der Jahreskaltmiete)",
+        min_value=0.0, max_value=10.0, value=3.0, step=0.5,
+        help="Puffer für Leerstand bei Mieterwechsel (Suche, Renovierung, Übergabe). Standard: 2–4% = ca. 1–2 Monatsleer pro Jahr. Auch in guten Lagen nicht bei 0% kalkulieren."
+    )
+    st.caption(f"→ Entspricht ca. {kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100 / kaltmiete_monatlich:.1f} Monatsmiet(en) Puffer p.a. ({kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100:,.0f} €/Jahr)" if kaltmiete_monatlich > 0 else "")
+
     instandhaltung_qm = st.slider(
-        "Private Instandhaltungsrücklage (€/qm/Monat)",  # [FEHLER 3 - NEU]
+        "Private Instandhaltungsrücklage (€/m²/Monat)",
         min_value=0.0, max_value=2.0, value=0.75, step=0.25,
-        help="Für Wohnungsinternes (Böden, Bad, Heizung in der Wohnung). Empfehlung: 0,50–1,00 €/qm."
+        help="Rücklage für Arbeiten INNERHALB Ihrer Wohnung (Böden, Bad, Türen, Heizkörper). Die WEG-Rücklage deckt nur Gemeinschaftseigentum. Empfehlung: 0,50–1,00 €/m²/Monat."
     )
     st.caption(
-        f"→ Mietausfallwagnis p.a.: {kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100:,.0f} € | "
-        f"Priv. Instandhaltung p.a.: {wohnflaeche_qm * instandhaltung_qm * 12:,.0f} €"
+        f"→ Mietausfallwagnis p.a.: **{kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100:,.0f} €** | "
+        f"Priv. Instandhaltung p.a.: **{wohnflaeche_qm * instandhaltung_qm * 12:,.0f} €** | "
+        f"Risikoabschläge gesamt: **{kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100 + wohnflaeche_qm * instandhaltung_qm * 12:,.0f} €/Jahr**"
     )
 else:
     kaltmiete_monatlich = 0
     umlagefaehige_monat = 0
     mietausfallwagnis_p = 0.0
     instandhaltung_qm = 0.0
-    nicht_umlagefaehige_pa = st.number_input("Laufende Kosten p.a. (Hausgeld etc.)", min_value=0, max_value=10000, value=960, step=10)
+    nicht_umlagefaehige_pa = st.number_input(
+        "Laufende Kosten p.a. (Hausgeld etc.)",
+        min_value=0, max_value=10000, value=960, step=10,
+        help="Monatliches Hausgeld × 12. Enthält WEG-Verwaltung, Instandhaltungsrücklage (Gemeinschaftseigentum), Grundsteuer (falls nicht separat), etc."
+    )
 
-steuersatz = st.number_input("Persönl. Steuersatz (%)", min_value=0.0, max_value=100.0, value=42.0, step=0.5)
+steuersatz = st.number_input(
+    "Persönl. Grenzsteuersatz (%)",
+    min_value=0.0, max_value=100.0, value=42.0, step=0.5,
+    help="Verwenden Sie Ihren Grenzsteuersatz (nicht den Durchschnitt). Bei ~60.000€ zu verst. Einkommen: ca. 42%. Bei ~30.000€: ca. 30%. Gilt für Vermietungseinkünfte als 'Einkünfte aus Vermietung und Verpachtung' (§ 21 EStG)."
+)
+
+with st.expander("ℹ️ Welchen Steuersatz soll ich eintragen?", expanded=False):
+    st.markdown("""
+    Tragen Sie Ihren **Grenzsteuersatz** ein — das ist der Satz, mit dem Ihr *letzter Euro* Einkommen besteuert wird.
+
+    | Zu verst. Jahreseinkommen | Grenzsteuersatz (ca.) |
+    |---|---|
+    | bis 11.784 € | 0% (Grundfreibetrag) |
+    | bis ~30.000 € | ~25–30% |
+    | bis ~60.000 € | ~35–42% |
+    | über 66.761 € | **42%** (Spitzensteuersatz) |
+    | über 277.826 € | 45% (Reichensteuer) |
+
+    Mieteinnahmen werden zu Ihrem sonstigen Einkommen addiert und mit diesem Satz versteuert.
+    **Aber:** AfA, Zinsen und Kosten mindern den zu versteuernden Gewinn — oft entsteht ein steuerlicher Verlust, der Ihre Gesamtsteuerlast senkt.
+    """)
 
 st.subheader("Persönliche Finanzsituation")
-verfuegbares_einkommen = st.number_input("Monatl. verfügbares Einkommen (€)", min_value=0, max_value=100000, value=2500, step=100)
+verfuegbares_einkommen = st.number_input(
+    "Monatl. verfügbares Einkommen (€)",
+    min_value=0, max_value=100000, value=2500, step=100,
+    help="Ihr aktuelles monatlich frei verfügbares Einkommen nach allen laufenden Ausgaben (Miete/Lebenshaltung). Das Tool zeigt, wie die Immobilie diesen Betrag verändert."
+)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SEKTION 4: Checkliste
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.header("4. Checkliste: Wichtige Dokumente")
-st.markdown("Haken Sie ab, welche Dokumente Sie bereits haben:")
 
+with st.expander("ℹ️ Warum sind diese Dokumente wichtig?", expanded=False):
+    st.markdown("""
+    | Dokument | Warum wichtig? |
+    |---|---|
+    | Grundbuchauszug | Zeigt Lasten, Grundschulden, Wegerechte, Vorkaufsrechte |
+    | Teilungserklärung | Definiert, was Ihr Sondereigentum ist (z.B. Keller, Stellplatz) |
+    | WEG-Protokolle (3–5 Jahre) | Zeigen geplante Sanierungen, Streitigkeiten, Sonderumlagen |
+    | Jahresabrechnung & Wirtschaftsplan | Zeigt tatsächliche vs. geplante Kosten der WEG |
+    | Höhe der Instandhaltungsrücklage | Niedrige Rücklage = Sonderumlagerisiko für Sie |
+    | Energieausweis | Pflicht beim Verkauf, relevant für CO₂-Kosten |
+
+    ⚠️ **Achtung:** Niedrige WEG-Rücklagen (< 5.000€ pro Einheit) deuten oft auf bevorstehende **Sonderumlagen** hin — ein häufiger Kostenfallstrick.
+    """)
+
+st.markdown("Haken Sie ab, welche Dokumente Sie bereits haben:")
 if 'checklist_status' not in st.session_state:
     st.session_state['checklist_status'] = {}
 
@@ -508,83 +764,117 @@ for i, item in enumerate(checklist_items):
         value=st.session_state['checklist_status'].get(item, False)
     )
 
+checked_count = sum(st.session_state['checklist_status'].values())
+total_count = len(checklist_items)
+if checked_count == total_count:
+    st.success(f"✅ Alle {total_count} Dokumente vorhanden — gut vorbereitet!")
+elif checked_count >= total_count * 0.6:
+    st.warning(f"⚠️ {checked_count}/{total_count} Dokumente vorhanden — noch nicht vollständig.")
+else:
+    st.error(f"❌ Nur {checked_count}/{total_count} Dokumente vorhanden — bitte anfordern vor der Entscheidung.")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INPUTS zusammenbauen (unverändert, nur mietausfallwagnis & instandhaltung neu)
+# ─────────────────────────────────────────────────────────────────────────────
 inputs = {
-    'wohnort': wohnort,
-    'baujahr_kategorie': baujahr,
-    'wohnflaeche_qm': wohnflaeche_qm,
-    'stockwerk': stockwerk,
-    'zimmeranzahl': zimmeranzahl,
-    'energieeffizienz': energieeffizienz,
-    'oepnv_anbindung': oepnv_anbindung,
-    'besonderheiten': besonderheiten,
-    'kaufpreis': kaufpreis,
-    'garage_stellplatz_kosten': garage_stellplatz,
-    'invest_bedarf': invest_bedarf,
-    'eigenkapital': eigenkapital,
-    'gebaeude_anteil_prozent': gebaeude_anteil_prozent,          # [FEHLER 1 - NEU]
-    'nebenkosten_prozente': {
-        'grunderwerbsteuer': grunderwerbsteuer,
-        'notar': notar,
-        'grundbuch': grundbuch,
-        'makler': makler
-    },
-    'nutzungsart': nutzungsart,
-    'zins1_prozent': zins1,
-    'modus_d1': modus_d1,
+    'wohnort': wohnort, 'baujahr_kategorie': baujahr, 'wohnflaeche_qm': wohnflaeche_qm,
+    'stockwerk': stockwerk, 'zimmeranzahl': zimmeranzahl, 'energieeffizienz': energieeffizienz,
+    'oepnv_anbindung': oepnv_anbindung, 'besonderheiten': besonderheiten,
+    'kaufpreis': kaufpreis, 'garage_stellplatz_kosten': garage_stellplatz,
+    'invest_bedarf': invest_bedarf, 'eigenkapital': eigenkapital,
+    'gebaeude_anteil_prozent': gebaeude_anteil_prozent,
+    'nebenkosten_prozente': {'grunderwerbsteuer': grunderwerbsteuer, 'notar': notar, 'grundbuch': grundbuch, 'makler': makler},
+    'nutzungsart': nutzungsart, 'zins1_prozent': zins1, 'modus_d1': modus_d1,
     'tilgung1_prozent': tilgung1 if tilgung1_modus.startswith("Tilgungssatz") else None,
     'tilgung1_euro_mtl': tilg_eur1 if tilgung1_modus.startswith("Tilgungsbetrag") else None,
     'laufzeit1_jahre': laufzeit1 if tilgung1_modus.startswith("Laufzeit") else None,
-    'kaltmiete_monatlich': kaltmiete_monatlich,
-    'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
+    'kaltmiete_monatlich': kaltmiete_monatlich, 'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
     'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
-    'mietausfallwagnis_prozent': mietausfallwagnis_p,            # [FEHLER 3 - NEU]
-    'instandhaltung_euro_qm': instandhaltung_qm,                 # [FEHLER 3 - NEU]
-    'steuersatz': steuersatz,
-    'verfuegbares_einkommen_mtl': verfuegbares_einkommen,
+    'mietausfallwagnis_prozent': mietausfallwagnis_p,
+    'instandhaltung_euro_qm': instandhaltung_qm,
+    'steuersatz': steuersatz, 'verfuegbares_einkommen_mtl': verfuegbares_einkommen,
     'checklist_status': st.session_state['checklist_status']
 }
 
 if 'results' not in st.session_state:
     st.session_state['results'] = None
 
-if st.button("Analyse berechnen"):
+st.markdown("---")
+if st.button("🔍 Analyse berechnen", type="primary"):
     results = calculate_analytics(inputs)
     st.session_state['results'] = results
 
 results = st.session_state['results']
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ERGEBNISSE mit Ampelfarben und Einordnung
+# ─────────────────────────────────────────────────────────────────────────────
 if results:
-    st.subheader("Ergebnisse")
+    st.markdown("---")
+    st.header("5. Ergebnisse")
+
+    # --- Schnellübersicht oben als Metrics ---
+    if nutzungsart == "Vermietung":
+        cf_vor = next((r['val2'] for r in results['display_table'] if '= Cashflow vor Steuern' in r['kennzahl']), 0)
+        cf_nach = next((r['val2'] for r in results['display_table'] if '= Effektiver Cashflow' in r['kennzahl']), 0)
+        neues_eink = next((r['val2'] for r in results['display_table'] if '= Neues verfügbares Einkommen' in r['kennzahl']), 0)
+
+        st.subheader("📊 Schnellübersicht")
+        m1, m2, m3 = st.columns(3)
+        m1.metric(
+            "Cashflow vor Steuern (lfd.)",
+            f"{cf_vor / 12:,.0f} €/Monat",
+            delta=f"{cf_vor:,.0f} €/Jahr"
+        )
+        m2.metric(
+            "Cashflow nach Steuern (lfd.)",
+            f"{cf_nach / 12:,.0f} €/Monat",
+            delta=f"{cf_nach:,.0f} €/Jahr"
+        )
+        m3.metric(
+            "Neues monatl. Verfügbares",
+            f"{neues_eink:,.0f} €/Monat",
+            delta=f"{neues_eink - verfuegbares_einkommen:+,.0f} € vs. heute"
+        )
+
+        # Automatische Bewertung
+        if cf_nach >= 0:
+            st.success(
+                f"✅ **Cashflow-positiv nach Steuern:** Die Immobilie kostet Sie monatlich nichts zusätzlich "
+                f"(lfd. Jahre: +{cf_nach / 12:,.0f} €/Monat nach Steuern)."
+            )
+        elif cf_vor < 0:
+            st.error(
+                f"❌ **Cashflow negativ — auch vor Steuern:** Die Immobilie kostet Sie monatlich "
+                f"{abs(cf_vor / 12):,.0f} € Zuzahlung, selbst ohne Steuerbetrachtung. "
+                "Prüfen Sie Kaufpreis, Mietansatz und Finanzierungskonditionen."
+            )
+        else:
+            st.warning(
+                f"⚠️ **Cashflow vor Steuern negativ, nach Steuern ausgeglichen:** "
+                f"Die Immobilie kostet Sie vor Steuern {abs(cf_vor / 12):,.0f} €/Monat, "
+                f"nach Steuerersparnis aber nur {abs(cf_nach / 12):,.0f} €/Monat. "
+                "Typisch für Steuersparer-Modelle — abhängig von Ihrer Einkommenssituation."
+            )
+
+    # --- Detailtabelle ---
+    st.subheader("Detaillierte Cashflow-Rechnung")
 
     if nutzungsart == "Vermietung":
         all_keys = [
-            "Einnahmen p.a. (Kaltmiete)",
-            "Umlagefähige Kosten p.a.",
-            "Nicht umlagef. Kosten p.a.",
-            "- Mietausfallwagnis p.a.",              # [FEHLER 3 - NEU]
-            "- Priv. Instandhaltungsrücklage p.a.",  # [FEHLER 3 - NEU]
-            "Rückzahlung Darlehen p.a.",
-            "- Zinsen p.a.",
-            "Jährliche Gesamtkosten",
-            "= Cashflow vor Steuern p.a.",
-            "- AfA p.a.",
-            "- Absetzbare Kaufnebenkosten (Jahr 1)",
-            "= Steuerlicher Gewinn/Verlust p.a.",
-            "+ Steuerersparnis / -last p.a.",
-            "= Effektiver Cashflow n. St. p.a.",
-            "Ihr monatl. Einkommen (vorher)",
-            "+/- Mtl. Cashflow Immobilie",
-            "= Neues verfügbares Einkommen"
+            "Einnahmen p.a. (Kaltmiete)", "Umlagefähige Kosten p.a.", "Nicht umlagef. Kosten p.a.",
+            "- Mietausfallwagnis p.a.", "- Priv. Instandhaltungsrücklage p.a.",
+            "Rückzahlung Darlehen p.a.", "- Zinsen p.a.", "Jährliche Gesamtkosten",
+            "= Cashflow vor Steuern p.a.", "- AfA p.a.", "- Absetzbare Kaufnebenkosten (Jahr 1)",
+            "= Steuerlicher Gewinn/Verlust p.a.", "+ Steuerersparnis / -last p.a.",
+            "= Effektiver Cashflow n. St. p.a.", "Ihr monatl. Einkommen (vorher)",
+            "+/- Mtl. Cashflow Immobilie", "= Neues verfügbares Einkommen"
         ]
     else:
         all_keys = [
-            "Laufende Kosten p.a.",
-            "Rückzahlung Darlehen p.a.",
-            "- Zinsen p.a.",
-            "Jährliche Gesamtkosten",
-            "Ihr monatl. Einkommen (vorher)",
-            "- Mtl. Kosten Immobilie",
-            "= Neues verfügbares Einkommen"
+            "Laufende Kosten p.a.", "Rückzahlung Darlehen p.a.", "- Zinsen p.a.",
+            "Jährliche Gesamtkosten", "Ihr monatl. Einkommen (vorher)",
+            "- Mtl. Kosten Immobilie", "= Neues verfügbares Einkommen"
         ]
 
     col1, col2 = st.columns(2)
@@ -594,9 +884,12 @@ if results:
         for key in all_keys:
             val = next((r['val1'] for r in results['display_table'] if key in r['kennzahl']), "")
             if val != "":
-                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                is_bold = key.startswith("=") or "+ Steuerersparnis" in key
+                style = "font-weight: bold; font-size: 1.05em;" if is_bold else ""
+                color = "color: green;" if is_number(val) and float(val) > 0 and key.startswith("=") else \
+                        "color: red;" if is_number(val) and float(val) < 0 and key.startswith("=") else ""
                 st.markdown(
-                    f"<div style='{style}'>{key}: {format_eur(val) if is_number(val) else val}</div>",
+                    f"<div style='{style}{color}'>{key}: {format_eur(val) if is_number(val) else val}</div>",
                     unsafe_allow_html=True
                 )
 
@@ -605,26 +898,60 @@ if results:
         for key in all_keys:
             val = next((r['val2'] for r in results['display_table'] if key in r['kennzahl']), "")
             if val != "":
-                style = "font-weight: bold;" if key.startswith("=") or "+ Steuerersparnis" in key else ""
+                is_bold = key.startswith("=") or "+ Steuerersparnis" in key
+                style = "font-weight: bold; font-size: 1.05em;" if is_bold else ""
+                color = "color: green;" if is_number(val) and float(val) > 0 and key.startswith("=") else \
+                        "color: red;" if is_number(val) and float(val) < 0 and key.startswith("=") else ""
                 st.markdown(
-                    f"<div style='{style}'>{key}: {format_eur(val) if is_number(val) else val}</div>",
+                    f"<div style='{style}{color}'>{key}: {format_eur(val) if is_number(val) else val}</div>",
                     unsafe_allow_html=True
                 )
 
+    # --- Renditekennzahlen mit Einordnung ---
     if 'finanzkennzahlen' in results and results['finanzkennzahlen']:
-        st.subheader("Finanzkennzahlen")
+        st.subheader("📈 Finanzkennzahlen & Einordnung")
+
+        with st.expander("ℹ️ Was bedeuten diese Kennzahlen?", expanded=False):
+            st.markdown("""
+            | Kennzahl | Formel | Gut | Okay | Schwach |
+            |---|---|---|---|---|
+            | **Bruttomietrendite** | Jahreskaltmiete / Gesamtinvestition | > 5% | 4–5% | < 4% |
+            | **Eigenkapitalrendite** | Cashflow n.St. / Eigenkapital | > 10% | 5–10% | < 5% |
+
+            **Ø Bruttomietrendite Deutschland H2/2025: 4,1%** (Quelle: Baufi24 Mietrenditeatlas)
+            Metropolen (München, Hamburg, Berlin): oft unter 3,5% — hier spekuliert man eher auf Wertsteigerung.
+
+            ⚠️ Die **Bruttomietrendite** ignoriert Kaufnebenkosten und Kosten — sie dient nur als Schnellfilter.
+            Entscheidend ist der **Cashflow nach Steuern** in Kombination mit der **Eigenkapitalrendite**.
+            """)
+
         for k, v in results['finanzkennzahlen'].items():
-            if "rendite" in k.lower():
-                st.markdown(f"**{k}:** {format_percent(v)}")
+            val_f = float(v)
+            if "bruttomietrendite" in k.lower():
+                if val_f >= 5:
+                    st.success(f"✅ **{k}:** {format_percent(v)} — gut (Ø Deutschland: 4,1%)")
+                elif val_f >= 4:
+                    st.warning(f"⚠️ **{k}:** {format_percent(v)} — im Durchschnitt (Ø Deutschland: 4,1%)")
+                else:
+                    st.error(f"❌ **{k}:** {format_percent(v)} — unter Durchschnitt (Ø Deutschland: 4,1%)")
+            elif "eigenkapitalrendite" in k.lower():
+                if val_f >= 10:
+                    st.success(f"✅ **{k}:** {format_percent(v)} — gut (Richtwert: >10%)")
+                elif val_f >= 5:
+                    st.warning(f"⚠️ **{k}:** {format_percent(v)} — akzeptabel (Richtwert: >10%)")
+                else:
+                    st.error(f"❌ **{k}:** {format_percent(v)} — schwach (Richtwert: >10%)")
             else:
                 st.markdown(f"**{k}:** {v}")
 
-    if st.button("PDF-Bericht erstellen"):
+    # --- PDF Export ---
+    st.markdown("---")
+    if st.button("📄 PDF-Bericht erstellen"):
         try:
             pdf_bytes = create_pdf_report(results, inputs, checklist_items)
             st.success("PDF erfolgreich erstellt!")
             st.download_button(
-                label="📄 PDF-Bericht herunterladen",
+                label="⬇️ PDF-Bericht herunterladen",
                 data=pdf_bytes,
                 file_name=f"Immobilien_Analyse_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
                 mime="application/pdf"
