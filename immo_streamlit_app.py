@@ -161,8 +161,8 @@ def calculate_analytics(inputs):
         steuerlicher_gewinn = (kaltmiete_jahr - nicht_umlagefaehige_jahr - zinsen_jahr
                                - afa_jahr - mietausfallwagnis_pa)  # [FEHLER 3 - NEU]
         steuerlicher_gewinn_jahr1 = steuerlicher_gewinn - nebenkosten_summe
-        steuerersparnis_jahr1 = steuerlicher_gewinn_jahr1 * inputs.get('steuersatz', 0) / 100
-        steuerersparnis_laufend = steuerlicher_gewinn * inputs.get('steuersatz', 0) / 100
+        steuerersparnis_jahr1   = -(steuerlicher_gewinn_jahr1 * inputs.get('steuersatz', 0) / 100)
+        steuerersparnis_laufend = -(steuerlicher_gewinn       * inputs.get('steuersatz', 0) / 100)
 
         # [FEHLER 3 - NEU] Cashflow um beide Risikopositionen bereinigt
         cashflow_vor_steuer = (
