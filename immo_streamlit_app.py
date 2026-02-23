@@ -18,7 +18,7 @@ HEIZUNG_CO2_FAKTOR = {
     "Pellets/Holz":       0.0,
 }
 
-ENERGIEKLASSE_VERBRAUCH = {  # Endenergie kWh/m²/a (Schätzwert für Planung)
+ENERGIEKLASSE_VERBRAUCH = {  # Endenergie kWh/m²/a (Schätzwert)
     "A+": 15, "A": 30, "B": 55, "C": 80,
     "D": 110, "E": 145, "F": 185, "G": 230, "H": 300
 }
@@ -46,10 +46,20 @@ checklist_items = [
 # HILFSFUNKTIONEN
 # ═════════════════════════════════════════════════════════════════════════════
 def format_eur(val):
+    """Zahl mit €-Zeichen, deutsches Format: 1.234,56 €"""
     try:
         f = float(str(val).replace(",", "."))
         return f"{f:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
     except Exception:
+        return str(val)
+
+def de(val, d=2):
+    """Deutsche Zahlenformatierung ohne €: 1.234,56 — für f-Strings"""
+    try:
+        f = float(str(val).replace(",", "."))
+        s = f"{f:,.{d}f}"
+        return s.replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
         return str(val)
 
 def format_percent(val):
@@ -71,18 +81,18 @@ def berechne_co2_vermieter(heizungstyp, effizienzklasse, wohnflaeche, jahresverb
         return {'co2_qm': 0.0, 'vermieter_anteil': 0.0, 'vermieter_kosten': 0.0}
     verbrauch = jahresverbrauch_kwh if (jahresverbrauch_kwh and jahresverbrauch_kwh > 0) \
                 else ENERGIEKLASSE_VERBRAUCH.get(effizienzklasse, 100) * wohnflaeche
-    co2_kg     = verbrauch * faktor
-    co2_qm     = co2_kg / wohnflaeche
-    anteil     = next((a for lo, hi, a in CO2_STUFEN_VERMIETER if lo <= co2_qm < hi), 0.95)
-    kosten     = (co2_kg / 1000 * CO2_KOST_AUFG_PREIS) * anteil
+    co2_kg   = verbrauch * faktor
+    co2_qm   = co2_kg / wohnflaeche
+    anteil   = next((a for lo, hi, a in CO2_STUFEN_VERMIETER if lo <= co2_qm < hi), 0.95)
+    kosten   = (co2_kg / 1000 * CO2_KOST_AUFG_PREIS) * anteil
     return {'co2_qm': round(co2_qm, 1), 'vermieter_anteil': anteil, 'vermieter_kosten': round(kosten, 2)}
 
 # ═════════════════════════════════════════════════════════════════════════════
-# DARLEHENSBERECHNUNG (Annuitätsformel, mathematisch korrekt)
+# DARLEHENSBERECHNUNG (Annuitätsformel)
 # ═════════════════════════════════════════════════════════════════════════════
 def berechne_darlehen_details(summe, zins, tilgung_p=None, tilgung_euro_mtl=None,
                                laufzeit_jahre=None, modus='tilgungssatz'):
-    r = zins / 100 / 12  # Monatlicher Zinssatz
+    r = zins / 100 / 12
 
     if modus == 'tilgungssatz' and tilgung_p:
         monatsrate = summe * (zins + tilgung_p) / 100 / 12
@@ -93,7 +103,7 @@ def berechne_darlehen_details(summe, zins, tilgung_p=None, tilgung_euro_mtl=None
         return {'monatsrate': monatsrate, 'laufzeit_jahre': laufzeit, 'tilgung_p_ergebnis': tilgung_p}
 
     elif modus == 'tilgung_euro' and tilgung_euro_mtl:
-        monatsrate = tilgung_euro_mtl
+        monatsrate    = tilgung_euro_mtl
         tilgung_p_erg = ((monatsrate - summe * r) * 12 / summe * 100) if summe > 0 else 0
         if r > 0 and monatsrate > r * summe:
             laufzeit = math.log(monatsrate / (monatsrate - r * summe)) / math.log(1 + r) / 12
@@ -102,7 +112,7 @@ def berechne_darlehen_details(summe, zins, tilgung_p=None, tilgung_euro_mtl=None
         return {'monatsrate': monatsrate, 'laufzeit_jahre': laufzeit, 'tilgung_p_ergebnis': tilgung_p_erg}
 
     elif modus == 'laufzeit' and laufzeit_jahre:
-        n = laufzeit_jahre * 12
+        n          = laufzeit_jahre * 12
         monatsrate = summe * r * (1 + r)**n / ((1 + r)**n - 1) if r > 0 else summe / n
         tilgung_p_erg = ((monatsrate - summe * r) * 12 / summe * 100) if summe > 0 else 0
         return {'monatsrate': monatsrate, 'laufzeit_jahre': laufzeit_jahre, 'tilgung_p_ergebnis': tilgung_p_erg}
@@ -114,14 +124,14 @@ def berechne_darlehen_details(summe, zins, tilgung_p=None, tilgung_euro_mtl=None
 # HAUPTBERECHNUNG
 # ═════════════════════════════════════════════════════════════════════════════
 def calculate_analytics(inputs):
-    kaufpreis            = inputs.get('kaufpreis', 0)
-    garage               = inputs.get('garage_stellplatz_kosten', 0)
-    invest_bedarf        = inputs.get('invest_bedarf', 0)
-    nk_prozente          = inputs.get('nebenkosten_prozente', {})
-    nebenkosten_summe    = (kaufpreis + garage) * sum(nk_prozente.values()) / 100
-    gesamtinvestition    = kaufpreis + garage + invest_bedarf + nebenkosten_summe
-    eigenkapital         = inputs.get('eigenkapital', 0)
-    darlehen_summe       = gesamtinvestition - eigenkapital
+    kaufpreis         = inputs.get('kaufpreis', 0)
+    garage            = inputs.get('garage_stellplatz_kosten', 0)
+    invest_bedarf     = inputs.get('invest_bedarf', 0)
+    nk_prozente       = inputs.get('nebenkosten_prozente', {})
+    nebenkosten_summe = (kaufpreis + garage) * sum(nk_prozente.values()) / 100
+    gesamtinvestition = kaufpreis + garage + invest_bedarf + nebenkosten_summe
+    eigenkapital      = inputs.get('eigenkapital', 0)
+    darlehen_summe    = gesamtinvestition - eigenkapital
 
     d1 = berechne_darlehen_details(
         darlehen_summe, inputs.get('zins1_prozent', 0),
@@ -131,24 +141,24 @@ def calculate_analytics(inputs):
         modus=inputs.get('modus_d1', 'tilgungssatz')
     )
 
-    kaltmiete_jahr          = inputs.get('kaltmiete_monatlich', 0) * 12
-    umlagefaehige_jahr      = inputs.get('umlagefaehige_kosten_monatlich', 0) * 12
-    nicht_umlagefaehige_j   = inputs.get('nicht_umlagefaehige_kosten_pa', 0)
-    zinsen_jahr             = darlehen_summe * inputs.get('zins1_prozent', 0) / 100
-    darlehen_rueck_jahr     = d1['monatsrate'] * 12
+    kaltmiete_jahr        = inputs.get('kaltmiete_monatlich', 0) * 12
+    umlagefaehige_jahr    = inputs.get('umlagefaehige_kosten_monatlich', 0) * 12
+    nicht_umlagefaehige_j = inputs.get('nicht_umlagefaehige_kosten_pa', 0)
+    zinsen_jahr           = darlehen_summe * inputs.get('zins1_prozent', 0) / 100
+    darlehen_rueck_jahr   = d1['monatsrate'] * 12
 
     # AfA (§ 7 Abs. 4 EStG)
-    baujahr = inputs.get('baujahr_kategorie', '1925 - 2022')
-    afa_satz = 2.5 if baujahr == 'vor 1925' else 3.0 if baujahr == 'ab 2023' else 2.0
-    gebaeude_anteil = inputs.get('gebaeude_anteil_prozent', 80)
-    afa_jahr = kaufpreis * (gebaeude_anteil / 100) * (afa_satz / 100)
+    baujahr      = inputs.get('baujahr_kategorie', '1925 - 2022')
+    afa_satz     = 2.5 if baujahr == 'vor 1925' else 3.0 if baujahr == 'ab 2023' else 2.0
+    gebaeude_ant = inputs.get('gebaeude_anteil_prozent', 80)
+    afa_jahr     = kaufpreis * (gebaeude_ant / 100) * (afa_satz / 100)
 
     # Risikopositionen
-    mietausfall_pa      = kaltmiete_jahr * inputs.get('mietausfallwagnis_prozent', 0) / 100
-    instandhaltung_pa   = inputs.get('wohnflaeche_qm', 0) * inputs.get('instandhaltung_euro_qm', 0) * 12
+    mietausfall_pa    = kaltmiete_jahr * inputs.get('mietausfallwagnis_prozent', 0) / 100
+    instandhaltung_pa = inputs.get('wohnflaeche_qm', 0) * inputs.get('instandhaltung_euro_qm', 0) * 12
 
-    # CO2-Steuer Vermieteranteil (CO2KostAufG)
-    co2_data        = berechne_co2_vermieter(
+    # CO2-Steuer Vermieteranteil
+    co2_data = berechne_co2_vermieter(
         inputs.get('heizungstyp', 'Gas'),
         inputs.get('energieeffizienz', 'B'),
         inputs.get('wohnflaeche_qm', 0),
@@ -159,25 +169,21 @@ def calculate_analytics(inputs):
     verfuegbar_mtl = inputs.get('verfuegbares_einkommen_mtl', 0)
 
     if inputs.get('nutzungsart') == 'Vermietung':
-        # Steuerlicher Gewinn/Verlust
-        stg_lfd  = kaltmiete_jahr - nicht_umlagefaehige_j - zinsen_jahr - afa_jahr - mietausfall_pa - co2_pa
-        stg_j1   = stg_lfd - nebenkosten_summe
+        stg_lfd = kaltmiete_jahr - nicht_umlagefaehige_j - zinsen_jahr - afa_jahr - mietausfall_pa - co2_pa
+        stg_j1  = stg_lfd - nebenkosten_summe
 
         # KORREKT: Verlust → positive Steuerersparnis | Gewinn → negative Steuerlast
         steuer_j1  = -(stg_j1  * inputs.get('steuersatz', 0) / 100)
         steuer_lfd = -(stg_lfd * inputs.get('steuersatz', 0) / 100)
 
-        # Cashflow
-        cf_vor = (kaltmiete_jahr + umlagefaehige_jahr
-                  - nicht_umlagefaehige_j - darlehen_rueck_jahr
-                  - mietausfall_pa - instandhaltung_pa - co2_pa)
+        cf_vor      = (kaltmiete_jahr + umlagefaehige_jahr
+                       - nicht_umlagefaehige_j - darlehen_rueck_jahr
+                       - mietausfall_pa - instandhaltung_pa - co2_pa)
         cf_nach_j1  = cf_vor + steuer_j1
         cf_nach_lfd = cf_vor + steuer_lfd
-
-        nve_j1  = verfuegbar_mtl + cf_nach_j1  / 12
-        nve_lfd = verfuegbar_mtl + cf_nach_lfd / 12
-
-        gesamt_kosten = -(nicht_umlagefaehige_j + darlehen_rueck_jahr + mietausfall_pa + instandhaltung_pa + co2_pa)
+        nve_j1      = verfuegbar_mtl + cf_nach_j1  / 12
+        nve_lfd     = verfuegbar_mtl + cf_nach_lfd / 12
+        gesamt_kost = -(nicht_umlagefaehige_j + darlehen_rueck_jahr + mietausfall_pa + instandhaltung_pa + co2_pa)
 
         display_table = [
             {'kennzahl': 'Einnahmen p.a. (Kaltmiete)',             'val1': kaltmiete_jahr,         'val2': kaltmiete_jahr},
@@ -188,7 +194,7 @@ def calculate_analytics(inputs):
             {'kennzahl': '- CO2-Steuer Vermieteranteil p.a.',      'val1': -co2_pa,                'val2': -co2_pa},
             {'kennzahl': 'Rückzahlung Darlehen p.a.',              'val1': -darlehen_rueck_jahr,   'val2': -darlehen_rueck_jahr},
             {'kennzahl': '- Zinsen p.a.',                          'val1': zinsen_jahr,            'val2': zinsen_jahr},
-            {'kennzahl': 'Jährliche Gesamtkosten',                 'val1': gesamt_kosten,          'val2': gesamt_kosten},
+            {'kennzahl': 'Jährliche Gesamtkosten',                 'val1': gesamt_kost,            'val2': gesamt_kost},
             {'kennzahl': '= Cashflow vor Steuern p.a.',            'val1': cf_vor,                 'val2': cf_vor},
             {'kennzahl': '- AfA p.a.',                             'val1': -afa_jahr,              'val2': -afa_jahr},
             {'kennzahl': '- Absetzbare Kaufnebenkosten (Jahr 1)',   'val1': -nebenkosten_summe,     'val2': 0},
@@ -207,13 +213,13 @@ def calculate_analytics(inputs):
         jaehrliche_kosten = darlehen_rueck_jahr + nicht_umlagefaehige_j
         nve = verfuegbar_mtl - jaehrliche_kosten / 12
         display_table = [
-            {'kennzahl': 'Laufende Kosten p.a.',           'val1': -nicht_umlagefaehige_j,   'val2': -nicht_umlagefaehige_j},
-            {'kennzahl': 'Rückzahlung Darlehen p.a.',      'val1': -darlehen_rueck_jahr,      'val2': -darlehen_rueck_jahr},
-            {'kennzahl': '- Zinsen p.a.',                  'val1': zinsen_jahr,               'val2': zinsen_jahr},
-            {'kennzahl': 'Jährliche Gesamtkosten',         'val1': -jaehrliche_kosten,        'val2': -jaehrliche_kosten},
-            {'kennzahl': 'Ihr monatl. Einkommen (vorher)', 'val1': verfuegbar_mtl,            'val2': verfuegbar_mtl},
-            {'kennzahl': '- Mtl. Kosten Immobilie',        'val1': -jaehrliche_kosten / 12,   'val2': -jaehrliche_kosten / 12},
-            {'kennzahl': '= Neues verfügbares Einkommen',  'val1': nve,                       'val2': nve},
+            {'kennzahl': 'Laufende Kosten p.a.',           'val1': -nicht_umlagefaehige_j,  'val2': -nicht_umlagefaehige_j},
+            {'kennzahl': 'Rückzahlung Darlehen p.a.',      'val1': -darlehen_rueck_jahr,     'val2': -darlehen_rueck_jahr},
+            {'kennzahl': '- Zinsen p.a.',                  'val1': zinsen_jahr,              'val2': zinsen_jahr},
+            {'kennzahl': 'Jährliche Gesamtkosten',         'val1': -jaehrliche_kosten,       'val2': -jaehrliche_kosten},
+            {'kennzahl': 'Ihr monatl. Einkommen (vorher)', 'val1': verfuegbar_mtl,           'val2': verfuegbar_mtl},
+            {'kennzahl': '- Mtl. Kosten Immobilie',        'val1': -jaehrliche_kosten / 12,  'val2': -jaehrliche_kosten / 12},
+            {'kennzahl': '= Neues verfügbares Einkommen',  'val1': nve,                      'val2': nve},
         ]
         finanzkennzahlen = {}
 
@@ -251,24 +257,24 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.cell(0, 8, "1. Objektdaten", ln=True)
     pdf.set_font("Arial", "", 10)
     for label, wert in [
-        ("Baujahr:", inputs.get('baujahr_kategorie', '')),
-        ("Wohnflaeche (qm):", str(inputs.get('wohnflaeche_qm', ''))),
-        ("Zimmeranzahl:", str(inputs.get('zimmeranzahl', ''))),
-        ("Stockwerk:", str(inputs.get('stockwerk', ''))),
-        ("Energieeffizienz:", str(inputs.get('energieeffizienz', ''))),
-        ("Heizungstyp:", str(inputs.get('heizungstyp', ''))),
-        ("OEPNV-Anbindung:", str(inputs.get('oepnv_anbindung', ''))),
-        ("Besonderheiten:", str(inputs.get('besonderheiten', ''))),
-        ("Kaufpreis:", fmt_eur(inputs.get('kaufpreis', 0))),
-        ("Eigenkapital:", fmt_eur(inputs.get('eigenkapital', 0))),
-        ("Gebaeudeanteil (AfA-Basis):", fmt_pct(inputs.get('gebaeude_anteil_prozent', 80))),
+        ("Baujahr:",                        inputs.get('baujahr_kategorie', '')),
+        ("Wohnflaeche (qm):",               str(inputs.get('wohnflaeche_qm', ''))),
+        ("Zimmeranzahl:",                    str(inputs.get('zimmeranzahl', ''))),
+        ("Stockwerk:",                       str(inputs.get('stockwerk', ''))),
+        ("Energieeffizienz:",                str(inputs.get('energieeffizienz', ''))),
+        ("Heizungstyp:",                     str(inputs.get('heizungstyp', ''))),
+        ("OEPNV-Anbindung:",                 str(inputs.get('oepnv_anbindung', ''))),
+        ("Besonderheiten:",                  str(inputs.get('besonderheiten', ''))),
+        ("Kaufpreis:",                       fmt_eur(inputs.get('kaufpreis', 0))),
+        ("Eigenkapital:",                    fmt_eur(inputs.get('eigenkapital', 0))),
+        ("Gebaeudeanteil (AfA-Basis):",      fmt_pct(inputs.get('gebaeude_anteil_prozent', 80))),
     ]:
         pdf.cell(65, 6, label, border=0)
         pdf.cell(65, 6, str(wert), border=0, ln=True)
     pdf.ln(5)
 
-    nk_summe     = (inputs.get('kaufpreis', 0) + inputs.get('garage_stellplatz_kosten', 0)) * sum(inputs.get('nebenkosten_prozente', {}).values()) / 100
-    gesamtinvest = inputs.get('kaufpreis', 0) + inputs.get('garage_stellplatz_kosten', 0) + inputs.get('invest_bedarf', 0) + nk_summe
+    nk_sum       = (inputs.get('kaufpreis', 0) + inputs.get('garage_stellplatz_kosten', 0)) * sum(inputs.get('nebenkosten_prozente', {}).values()) / 100
+    gesamtinvest = inputs.get('kaufpreis', 0) + inputs.get('garage_stellplatz_kosten', 0) + inputs.get('invest_bedarf', 0) + nk_sum
     darlehen     = gesamtinvest - inputs.get('eigenkapital', 0)
 
     pdf.set_font("Arial", "B", 12)
@@ -276,10 +282,10 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.set_font("Arial", "", 10)
     for label, wert in [
         ("Gesamtinvestition:", fmt_eur(gesamtinvest)),
-        ("Eigenkapital:", fmt_eur(inputs.get('eigenkapital', 0))),
-        ("Darlehen:", fmt_eur(darlehen)),
-        ("Zinssatz:", fmt_pct(inputs.get('zins1_prozent', 0))),
-        ("Tilgungssatz:", fmt_pct(inputs.get('tilgung1_prozent', 0) or 0)),
+        ("Eigenkapital:",      fmt_eur(inputs.get('eigenkapital', 0))),
+        ("Darlehen:",          fmt_eur(darlehen)),
+        ("Zinssatz:",          fmt_pct(inputs.get('zins1_prozent', 0))),
+        ("Tilgungssatz:",      fmt_pct(inputs.get('tilgung1_prozent', 0) or 0)),
     ]:
         pdf.cell(65, 6, label, border=0)
         pdf.cell(65, 6, str(wert), border=0, ln=True)
@@ -314,7 +320,7 @@ def create_pdf_report(results, inputs, checklist_items):
     pdf.set_font("Arial", "", 10)
     checklist_status = inputs.get("checklist_status", {})
     for item in checklist_items:
-        box  = "X" if checklist_status.get(item, False) else " "
+        box   = "X" if checklist_status.get(item, False) else " "
         clean = item.replace("ü","ue").replace("ö","oe").replace("ä","ae").replace("–","-")
         pdf.cell(0, 5, f"[{box}] {clean}", ln=True)
 
@@ -362,38 +368,40 @@ with st.expander("ℹ️ Warum sind diese Daten wichtig?", expanded=False):
     - **Wohnfläche** fließt in die CO2-Berechnung und die private Instandhaltungsrücklage ein.
     """)
 
-wohnort       = st.text_input("Wohnort / Stadtteil", "Nürnberg",
+wohnort        = st.text_input("Wohnort / Stadtteil", "Nürnberg",
                     help="Erscheint im PDF-Bericht. Beeinflusst keine Berechnung.")
-baujahr       = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"],
+baujahr        = st.selectbox("Baujahr", ["1925 - 2022", "vor 1925", "ab 2023"],
                     help="Bestimmt den AfA-Satz (§ 7 Abs. 4 EStG). Gilt nur für den Gebäudeanteil.")
 wohnflaeche_qm = st.number_input("Wohnfläche (m²)", min_value=10, max_value=500, value=80,
                     help="Wird für CO2-Berechnung und private Instandhaltungsrücklage (€/m²/Monat) verwendet.")
-stockwerk     = st.selectbox("Stockwerk", ["EG","1","2","3","4","5","6","DG"],
+stockwerk      = st.selectbox("Stockwerk", ["EG","1","2","3","4","5","6","DG"],
                     help="Dokumentation für PDF. EG = höheres Einbruchsrisiko, DG = ggf. Dachschäden.")
-zimmeranzahl  = st.selectbox("Zimmeranzahl", ["1","1,5","2","2,5","3","3,5","4","4,5","5"], index=4,
+zimmeranzahl   = st.selectbox("Zimmeranzahl", ["1","1,5","2","2,5","3","3,5","4","4,5","5"], index=4,
                     help="2–3 Zimmer = hohe Mietnachfrage, geringes Leerstandsrisiko.")
 energieeffizienz = st.selectbox("Energieeffizienz", ["A+","A","B","C","D","E","F","G","H"], index=2,
                     help="Bestimmt den CO2-Ausstoß und damit den Vermieteranteil an der CO2-Steuer.")
-heizungstyp   = st.selectbox("Heizungstyp",
+heizungstyp    = st.selectbox("Heizungstyp",
                     ["Gas", "Heizöl", "Fernwärme (fossil)", "Wärmepumpe", "Pellets/Holz"], index=0,
                     help="Wärmepumpe & Pellets: 0 € CO2-Steuer. Gas/Öl: CO2-Kosten je nach Effizienzklasse.")
 
 with st.expander("🔧 Jahresheizverbrauch (optional — für genauere CO2-Berechnung)", expanded=False):
     st.caption("Leer lassen (= 0) → Schätzwert aus Energieklasse. Genauen Wert finden Sie im Energieausweis.")
     jahresverbrauch_kwh = st.number_input("Jährl. Heizenergieverbrauch (kWh/Jahr)",
-                            min_value=0, max_value=100000, value=0, step=500,
-                            help="0 = Schätzwert aus Energieklasse × Wohnfläche.")
+                              min_value=0, max_value=100000, value=0, step=500,
+                              help="0 = Schätzwert aus Energieklasse × Wohnfläche.")
 
 co2_vorschau = berechne_co2_vermieter(heizungstyp, energieeffizienz, wohnflaeche_qm,
                                        jahresverbrauch_kwh if jahresverbrauch_kwh > 0 else None)
 if co2_vorschau['vermieter_anteil'] == 0:
-    st.success(f"✅ **{heizungstyp}** — kein CO2-Steueranteil für den Vermieter "
-               f"(~{co2_vorschau['co2_qm']} kg CO2/m²/a → 0%).")
+    st.success(
+        f"✅ **{heizungstyp}** — kein CO2-Steueranteil für den Vermieter "
+        f"(~{de(co2_vorschau['co2_qm'], 1)} kg CO2/m²/a → 0%)."
+    )
 else:
     st.warning(
         f"⚠️ **CO2-Steuer Vermieteranteil: {co2_vorschau['vermieter_anteil']*100:.0f}%** "
-        f"(~{co2_vorschau['co2_qm']} kg CO2/m²/a) | "
-        f"Geschätzte Kosten: **~{co2_vorschau['vermieter_kosten']:,.0f} €/Jahr** "
+        f"(~{de(co2_vorschau['co2_qm'], 1)} kg CO2/m²/a) | "
+        f"Geschätzte Kosten: **~{de(co2_vorschau['vermieter_kosten'], 0)} €/Jahr** "
         f"— nicht umlagefähig, fließt in die Cashflow-Berechnung ein."
     )
 
@@ -421,13 +429,13 @@ with st.expander("ℹ️ Was ist der Unterschied zwischen Kaufpreis und Gesamtin
     💡 Die Kaufnebenkosten sind im Jahr 1 bei Vermietung steuerlich absetzbar → großer Steuereffekt in Jahr 1.
     """)
 
-kaufpreis      = st.number_input("Kaufpreis (€)", min_value=0, max_value=10000000, value=250000, step=1000,
+kaufpreis     = st.number_input("Kaufpreis (€)", min_value=0, max_value=10000000, value=250000, step=1000,
                     help="Reiner Kaufpreis laut Kaufvertrag. Basis für AfA und Renditeberechnung.")
-garage         = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50000, value=0, step=1000,
+garage        = st.number_input("Garage/Stellplatz (€)", min_value=0, max_value=50000, value=0, step=1000,
                     help="Wird zur Nebenkosten-Basis addiert. Stellplätze selbst sind nicht AfA-fähig.")
-invest_bedarf  = st.number_input("Zusätzl. Investitionsbedarf (€)", min_value=0, max_value=1000000, value=10000, step=1000,
+invest_bedarf = st.number_input("Zusätzl. Investitionsbedarf (€)", min_value=0, max_value=1000000, value=10000, step=1000,
                     help="Geplante Renovierungen. Erhöht Darlehenssumme, kann als Werbungskosten absetzbar sein.")
-eigenkapital   = st.number_input("Eigenkapital (€)", min_value=0, max_value=10000000, value=80000, step=1000,
+eigenkapital  = st.number_input("Eigenkapital (€)", min_value=0, max_value=10000000, value=80000, step=1000,
                     help="Faustregel: Mind. die Kaufnebenkosten (~10%) sollten aus Eigenkapital stammen.")
 
 st.info("💡 **AfA-Basis:** Nur das Gebäude ist abschreibbar — nicht Grund & Boden (§ 7 Abs. 4 EStG). "
@@ -439,8 +447,8 @@ gebaeude_anteil = st.slider(
     help="100% minus dieser Wert = Bodenanteil (nicht abschreibbar). Je niedriger, desto geringer die jährliche AfA."
 )
 st.caption(
-    f"→ AfA-Basis: **{kaufpreis * gebaeude_anteil / 100:,.0f} €** "
-    f"| Bodenanteil (nicht absetzbar): **{kaufpreis * (100 - gebaeude_anteil) / 100:,.0f} €**"
+    f"→ AfA-Basis: **{de(kaufpreis * gebaeude_anteil / 100, 0)} €** "
+    f"| Bodenanteil (nicht absetzbar): **{de(kaufpreis * (100 - gebaeude_anteil) / 100, 0)} €**"
 )
 
 st.subheader("Kaufnebenkosten (%)")
@@ -458,11 +466,11 @@ with st.expander("ℹ️ Was sind Kaufnebenkosten?", expanded=False):
 
 grunderwerbsteuer = st.number_input("Grunderwerbsteuer %", min_value=0.0, max_value=15.0, value=3.5, step=0.1,
                         help="Bayern: 3,5% (2026). Bitte an Ihr Bundesland anpassen.")
-notar      = st.number_input("Notar %", min_value=0.0, max_value=10.0, value=1.5, step=0.1,
+notar     = st.number_input("Notar %", min_value=0.0, max_value=10.0, value=1.5, step=0.1,
                         help="Beurkundung + notarielle Leistungen. Ca. 1,0–2,0% des Kaufpreises.")
-grundbuch  = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1,
+grundbuch = st.number_input("Grundbuch %", min_value=0.0, max_value=10.0, value=0.5, step=0.1,
                         help="Eintragung ins Grundbuch (Eigentum + Grundschuld). Ca. 0,5%.")
-makler     = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01,
+makler    = st.number_input("Makler %", min_value=0.0, max_value=10.0, value=3.57, step=0.01,
                         help="Seit 2020 max. 3,57% je Seite. Bei Direktkauf: 0%.")
 
 nebenkosten_summe  = (kaufpreis + garage) * (grunderwerbsteuer + notar + grundbuch + makler) / 100
@@ -470,13 +478,13 @@ gesamtfinanzierung = kaufpreis + garage + invest_bedarf + nebenkosten_summe
 darlehen1_summe    = gesamtfinanzierung - eigenkapital
 
 st.caption(
-    f"Kaufnebenkosten gesamt: **{nebenkosten_summe:,.0f} €** "
+    f"Kaufnebenkosten gesamt: **{de(nebenkosten_summe, 0)} €** "
     f"({grunderwerbsteuer+notar+grundbuch+makler:.2f}%) "
-    f"| Gesamtinvestition: **{gesamtfinanzierung:,.0f} €**"
+    f"| Gesamtinvestition: **{de(gesamtfinanzierung, 0)} €**"
 )
 
 st.subheader("Darlehen")
-st.info(f"**Darlehenssumme (automatisch):** {darlehen1_summe:,.2f} € *(Gesamtinvestition − Eigenkapital)*")
+st.info(f"**Darlehenssumme (automatisch):** {de(darlehen1_summe)} € *(Gesamtinvestition − Eigenkapital)*")
 
 zins1 = st.number_input("Zins (%)", min_value=0.0, max_value=10.0, value=3.5, step=0.05,
             help="Aktueller Bauzins für Ihre Zinsbindungsperiode. Nach Ablauf muss neu verhandelt werden.")
@@ -492,20 +500,19 @@ with st.expander("ℹ️ Welchen Tilgungsmodus soll ich wählen?", expanded=Fals
     """)
 
 tilgung1_modus = st.selectbox("Tilgungsmodus",
-    ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0,
-    help="Wählen Sie, wie Sie Ihre Rückzahlung definieren möchten.")
+    ["Tilgungssatz (%)","Tilgungsbetrag (€ mtl.)","Laufzeit (Jahre)"], index=0)
 
 if tilgung1_modus.startswith("Tilgungssatz"):
-    tilgung1    = st.number_input("Tilgung (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1,
-                      help="Anfangstilgungssatz p.a. Empfehlung: mind. 2%.")
+    tilgung1 = st.number_input("Tilgung (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1,
+                    help="Anfangstilgungssatz p.a. Empfehlung: mind. 2%.")
     tilg_eur1, laufzeit1 = None, None
 elif tilgung1_modus.startswith("Tilgungsbetrag"):
-    tilg_eur1   = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50000, value=350, step=50,
-                      help="Muss höher sein als der monatliche Zinsanteil, sonst tilgen Sie nichts.")
+    tilg_eur1 = st.number_input("Tilgung (€ mtl.)", min_value=0, max_value=50000, value=350, step=50,
+                    help="Muss höher sein als der monatliche Zinsanteil, sonst tilgen Sie nichts.")
     tilgung1, laufzeit1 = None, None
 else:
-    laufzeit1   = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1,
-                      help="Die monatliche Rate wird automatisch per Annuitätsformel berechnet.")
+    laufzeit1 = st.number_input("Laufzeit (Jahre)", min_value=1, max_value=50, value=25, step=1,
+                    help="Die monatliche Rate wird automatisch per Annuitätsformel berechnet.")
     tilgung1, tilg_eur1 = None, None
 
 modus_d1 = ('tilgungssatz'  if tilgung1_modus.startswith("Tilgungssatz") else
@@ -515,8 +522,8 @@ d1 = berechne_darlehen_details(darlehen1_summe, zins1,
 
 st.markdown(f"""
 **Darlehen Übersicht:**
-- Darlehenssumme: **{darlehen1_summe:,.2f} €**
-- Monatliche Rate: **{d1['monatsrate']:,.2f} €**
+- Darlehenssumme: **{de(darlehen1_summe)} €**
+- Monatliche Rate: **{de(d1['monatsrate'])} €**
 - Laufzeit (Annuität): **{d1['laufzeit_jahre']:.1f} Jahre**
 - Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**
 """)
@@ -556,10 +563,12 @@ if nutzungsart == "Vermietung":
                               min_value=0.0, max_value=2.0, value=0.75, step=0.25,
                               help="Für wohnungsinternes Sondereigentum (Böden, Bad, Heizung in der Wohnung). Empfehlung: 0,50–1,00 €/m².")
     if kaltmiete_monatlich > 0:
+        ausfall_pa      = kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100
+        instand_pa      = wohnflaeche_qm * instandhaltung_qm * 12
         st.caption(
-            f"→ Mietausfallwagnis p.a.: **{kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100:,.0f} €** "
-            f"({kaltmiete_monatlich * 12 * mietausfallwagnis_p / 100 / kaltmiete_monatlich:.1f} Monatsmiet.) "
-            f"| Priv. Instandhaltung p.a.: **{wohnflaeche_qm * instandhaltung_qm * 12:,.0f} €**"
+            f"→ Mietausfallwagnis p.a.: **{de(ausfall_pa, 0)} €** "
+            f"({ausfall_pa / kaltmiete_monatlich:.1f} Monatsmiet.) "
+            f"| Priv. Instandhaltung p.a.: **{de(instand_pa, 0)} €**"
         )
 else:
     kaltmiete_monatlich, umlagefaehige_monat, mietausfallwagnis_p, instandhaltung_qm = 0, 0, 0.0, 0.0
@@ -628,16 +637,17 @@ else:
 inputs = {
     'wohnort': wohnort, 'baujahr_kategorie': baujahr, 'wohnflaeche_qm': wohnflaeche_qm,
     'stockwerk': stockwerk, 'zimmeranzahl': zimmeranzahl, 'energieeffizienz': energieeffizienz,
-    'heizungstyp': heizungstyp, 'jahresverbrauch_kwh': jahresverbrauch_kwh if jahresverbrauch_kwh > 0 else None,
+    'heizungstyp': heizungstyp,
+    'jahresverbrauch_kwh': jahresverbrauch_kwh if jahresverbrauch_kwh > 0 else None,
     'oepnv_anbindung': oepnv_anbindung, 'besonderheiten': besonderheiten,
     'kaufpreis': kaufpreis, 'garage_stellplatz_kosten': garage, 'invest_bedarf': invest_bedarf,
     'eigenkapital': eigenkapital, 'gebaeude_anteil_prozent': gebaeude_anteil,
     'nebenkosten_prozente': {'grunderwerbsteuer': grunderwerbsteuer, 'notar': notar,
                              'grundbuch': grundbuch, 'makler': makler},
     'nutzungsart': nutzungsart, 'zins1_prozent': zins1, 'modus_d1': modus_d1,
-    'tilgung1_prozent':   tilgung1  if tilgung1_modus.startswith("Tilgungssatz")    else None,
-    'tilgung1_euro_mtl':  tilg_eur1 if tilgung1_modus.startswith("Tilgungsbetrag") else None,
-    'laufzeit1_jahre':    laufzeit1 if tilgung1_modus.startswith("Laufzeit")        else None,
+    'tilgung1_prozent':  tilgung1  if tilgung1_modus.startswith("Tilgungssatz")    else None,
+    'tilgung1_euro_mtl': tilg_eur1 if tilgung1_modus.startswith("Tilgungsbetrag") else None,
+    'laufzeit1_jahre':   laufzeit1 if tilgung1_modus.startswith("Laufzeit")        else None,
     'kaltmiete_monatlich': kaltmiete_monatlich, 'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
     'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
     'mietausfallwagnis_prozent': mietausfallwagnis_p, 'instandhaltung_euro_qm': instandhaltung_qm,
@@ -664,23 +674,31 @@ if results:
     if nutzungsart == "Vermietung":
         cf_vor  = next((r['val2'] for r in results['display_table'] if '= Cashflow vor Steuern'  in r['kennzahl']), 0)
         cf_nach = next((r['val2'] for r in results['display_table'] if '= Effektiver Cashflow'   in r['kennzahl']), 0)
-        nve     = next((r['val2'] for r in results['display_table'] if '= Neues verfügbares'     in r['kennzahl']), 0)
+        nve     = next((r['val2'] for r in results['display_table'] if '= Neues verfügbares'      in r['kennzahl']), 0)
+        diff    = nve - verfuegbares_einkommen
 
         st.subheader("📊 Schnellübersicht")
         m1, m2, m3 = st.columns(3)
-        m1.metric("Cashflow vor Steuern (lfd.)", f"{cf_vor/12:,.0f} €/Monat",    delta=f"{cf_vor:,.0f} €/Jahr")
-        m2.metric("Cashflow nach Steuern (lfd.)", f"{cf_nach/12:,.0f} €/Monat",  delta=f"{cf_nach:,.0f} €/Jahr")
-        m3.metric("Neues monatl. Verfügbares",    f"{nve:,.0f} €/Monat",
-                  delta=f"{nve - verfuegbares_einkommen:+,.0f} € vs. heute")
+        m1.metric("Cashflow vor Steuern (lfd.)",  f"{de(cf_vor/12, 0)} €/Monat",
+                  delta=f"{de(cf_vor, 0)} €/Jahr")
+        m2.metric("Cashflow nach Steuern (lfd.)", f"{de(cf_nach/12, 0)} €/Monat",
+                  delta=f"{de(cf_nach, 0)} €/Jahr")
+        m3.metric("Neues monatl. Verfügbares",    f"{de(nve, 0)} €/Monat",
+                  delta=f"{'+' if diff >= 0 else ''}{de(diff, 0)} € vs. heute")
 
         if cf_nach >= 0:
-            st.success(f"✅ **Cashflow-positiv nach Steuern** (lfd. Jahre: +{cf_nach/12:,.0f} €/Monat).")
+            st.success(f"✅ **Cashflow-positiv nach Steuern** (lfd. Jahre: +{de(cf_nach/12, 0)} €/Monat).")
         elif cf_vor < 0:
-            st.error(f"❌ **Cashflow negativ — auch vor Steuern.** Zuzahlung: {abs(cf_vor/12):,.0f} €/Monat. "
-                     "Kaufpreis, Mietansatz oder Finanzierung prüfen.")
+            st.error(
+                f"❌ **Cashflow negativ — auch vor Steuern.** "
+                f"Zuzahlung: {de(abs(cf_vor/12), 0)} €/Monat. "
+                "Kaufpreis, Mietansatz oder Finanzierung prüfen."
+            )
         else:
-            st.warning(f"⚠️ **Vor Steuern negativ, nach Steuern: {cf_nach/12:,.0f} €/Monat.** "
-                       "Typisches Steuersparer-Modell — hängt von Ihrer Einkommenssituation ab.")
+            st.warning(
+                f"⚠️ **Vor Steuern negativ, nach Steuern: {de(cf_nach/12, 0)} €/Monat.** "
+                "Typisches Steuersparer-Modell — hängt von Ihrer Einkommenssituation ab."
+            )
 
     # --- Detailtabelle ---
     st.subheader("Detaillierte Cashflow-Rechnung")
@@ -732,7 +750,6 @@ if results:
 
             **Ø Bruttomietrendite Deutschland (Feb. 2026): ~4,1%**
             ⚠️ Die Eigenkapitalrendite berücksichtigt nur den Cashflow, nicht den Vermögensaufbau durch Tilgung.
-            Die tatsächliche Gesamtrendite ist höher.
             """)
 
         for k, v in results['finanzkennzahlen'].items():
