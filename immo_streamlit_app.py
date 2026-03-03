@@ -818,16 +818,13 @@ if results:
         reine_wk   = fk.get('reine_wohnkosten_pa', 0)
 
         st.subheader("🏦 Vermögensaufbau durch Tilgung")
-        st.info(
-            f"💡 Von Ihrer monatlichen Rate von **{de(d1['monatsrate'], 0)} €** sind im 1. Jahr:
-"
-            f"- **{de(zinsen_pa/12, 0)} €/Monat** Zinsen (= Kosten, nicht rückgewinnbar)
-"
-            f"- **{de(tilgung_pa/12, 0)} €/Monat** Tilgung (= Vermögensaufbau / Eigenkapitalzuwachs)
-
-"
+        _info_msg = (
+            f"💡 Von Ihrer monatlichen Rate von **{de(d1['monatsrate'], 0)} €** sind im 1. Jahr:\n"
+            f"- **{de(zinsen_pa/12, 0)} €/Monat** Zinsen (= Kosten, nicht rückgewinnbar)\n"
+            f"- **{de(tilgung_pa/12, 0)} €/Monat** Tilgung (= Vermögensaufbau / Eigenkapitalzuwachs)\n\n"
             f"Reine 'Wohnkosten' ohne Tilgung (Zins + Betrieb + Instandh. + CO2): **{de(reine_wk/12, 0)} €/Monat**"
         )
+        st.info(_info_msg)
 
         laufzeit_j = d1['laufzeit_jahre']
         ek_nach_10j = eigenkapital + tilgung_pa * 10
