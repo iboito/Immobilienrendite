@@ -560,18 +560,21 @@ st.markdown(f"""
 - Laufzeit (Annuität): **{d1['laufzeit_jahre']:.1f} Jahre**
 - Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**
 """)
-if nutzungsart == "Eigennutzung":
-    zinsbindung = st.number_input("Zinsbindung (Jahre)", min_value=5, max_value=30, value=10, step=5,
-                    help="Nach Ablauf der Zinsbindung muss das Darlehen zu dann geltenden Zinsen weitergeführt oder umgeschuldet werden. Üblich: 10–15 Jahre.")
-    sondertilgung_p = st.number_input("Sondertilgungsrecht (% p.a.)", min_value=0.0, max_value=20.0, value=5.0, step=1.0,
-                    help="Die meisten Kreditverträge erlauben 5–10% der Darlehenssumme p.a. als Sondertilgung. Erhöht Ihre Flexibilität erheblich.")
+zinsbindung = st.number_input("Zinsbindung (Jahre)", min_value=5, max_value=30, value=10, step=5,
+                help="Nach Ablauf der Zinsbindung muss das Darlehen zu dann geltenden Zinsen weitergeführt oder umgeschuldet werden. Üblich: 10–15 Jahre.")
+sondertilgung_p = st.number_input("Sondertilgungsrecht (% p.a.)", min_value=0.0, max_value=20.0, value=5.0, step=1.0,
+                help="Die meisten Kreditverträge erlauben 5–10% der Darlehenssumme p.a. als Sondertilgung. Erhöht Ihre Flexibilität erheblich.")
+if nutzungsart == "Vermietung":
+    st.caption(
+        f"💡 Sondertilgungspotenzial: bis zu **{de(darlehen1_summe * sondertilgung_p / 100, 0)} €/Jahr**. "
+        f"Hinweis: Da Zinsen bei Vermietung steuerlich absetzbar sind, reduziert jede Sondertilgung auch den Steuerabzug — "
+        f"der Nettoeffekt ist geringer als bei Eigennutzung, aber Risiko und Zinsbelastung sinken trotzdem."
+    )
+else:
     st.caption(
         f"💡 Sondertilgungspotenzial: bis zu **{de(darlehen1_summe * sondertilgung_p / 100, 0)} €/Jahr** tilgbar ohne Vorfälligkeitsentschädigung. "
         f"Zinsbindung endet nach **{zinsbindung} Jahren** — dann Anschlussfinanzierung nötig."
     )
-else:
-    zinsbindung = 10
-    sondertilgung_p = 5.0
 st.caption("ℹ️ Laufzeit ≠ Zinsbindung. Nach Ablauf der Zinsbindung muss zu dann geltenden Konditionen neu finanziert werden.")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -719,8 +722,8 @@ inputs = {
     'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
     'instand_eigen_pa': instand_eigen_pa if nutzungsart == "Eigennutzung" else 0,
     'co2_eigen_pa': co2_eigen_pa_calc if nutzungsart == "Eigennutzung" else 0,
-    'zinsbindung': zinsbindung if nutzungsart == "Eigennutzung" else 10,
-    'sondertilgung_p': sondertilgung_p if nutzungsart == "Eigennutzung" else 5.0,
+    'zinsbindung': zinsbindung,
+    'sondertilgung_p': sondertilgung_p,
     'mietausfallwagnis_prozent': mietausfallwagnis_p, 'instandhaltung_euro_qm': instandhaltung_qm if nutzungsart == 'Vermietung' else 0,
     'steuersatz': steuersatz, 'verfuegbares_einkommen_mtl': verfuegbares_einkommen,
     'checklist_status': st.session_state['checklist_status']
