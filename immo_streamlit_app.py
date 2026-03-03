@@ -210,18 +210,29 @@ def calculate_analytics(inputs):
         finanzkennzahlen    = {'Bruttomietrendite': bruttomietrendite, 'Eigenkapitalrendite': eigenkapitalrendite}
 
     else:
-        jaehrliche_kosten = darlehen_rueck_jahr + nicht_umlagefaehige_j
+        instand_eigen_pa  = inputs.get('instand_eigen_pa', 0)
+        co2_eigen_pa      = inputs.get('co2_eigen_pa', 0)
+        jaehrliche_kosten = darlehen_rueck_jahr + nicht_umlagefaehige_j + instand_eigen_pa + co2_eigen_pa
         nve = verfuegbar_mtl - jaehrliche_kosten / 12
         display_table = [
-            {'kennzahl': 'Laufende Kosten p.a.',           'val1': -nicht_umlagefaehige_j,  'val2': -nicht_umlagefaehige_j},
-            {'kennzahl': 'Rückzahlung Darlehen p.a.',      'val1': -darlehen_rueck_jahr,     'val2': -darlehen_rueck_jahr},
-            {'kennzahl': '- Zinsen p.a.',                  'val1': zinsen_jahr,              'val2': zinsen_jahr},
-            {'kennzahl': 'Jährliche Gesamtkosten',         'val1': -jaehrliche_kosten,       'val2': -jaehrliche_kosten},
-            {'kennzahl': 'Ihr monatl. Einkommen (vorher)', 'val1': verfuegbar_mtl,           'val2': verfuegbar_mtl},
-            {'kennzahl': '- Mtl. Kosten Immobilie',        'val1': -jaehrliche_kosten / 12,  'val2': -jaehrliche_kosten / 12},
-            {'kennzahl': '= Neues verfügbares Einkommen',  'val1': nve,                      'val2': nve},
+            {'kennzahl': 'Hausgeld / Betriebskosten p.a.',         'val1': -nicht_umlagefaehige_j,  'val2': -nicht_umlagefaehige_j},
+            {'kennzahl': '- Private Instandhaltungsrücklage p.a.', 'val1': -instand_eigen_pa,        'val2': -instand_eigen_pa},
+            {'kennzahl': '- CO2-Kosten (Eigennutzer) p.a.',        'val1': -co2_eigen_pa,            'val2': -co2_eigen_pa},
+            {'kennzahl': 'Rückzahlung Darlehen p.a.',              'val1': -darlehen_rueck_jahr,     'val2': -darlehen_rueck_jahr},
+            {'kennzahl': '- Zinsen p.a.',                          'val1': zinsen_jahr,              'val2': zinsen_jahr},
+            {'kennzahl': '- Tilgung p.a. (Vermögensaufbau)',       'val1': darlehen_rueck_jahr - zinsen_jahr, 'val2': darlehen_rueck_jahr - zinsen_jahr},
+            {'kennzahl': 'Jährliche Gesamtkosten (inkl. Tilgung)', 'val1': -jaehrliche_kosten,       'val2': -jaehrliche_kosten},
+            {'kennzahl': 'Ihr monatl. Einkommen (vorher)',         'val1': verfuegbar_mtl,           'val2': verfuegbar_mtl},
+            {'kennzahl': '- Mtl. Kosten Immobilie',                'val1': -jaehrliche_kosten / 12,  'val2': -jaehrliche_kosten / 12},
+            {'kennzahl': '= Neues verfügbares Einkommen',          'val1': nve,                      'val2': nve},
         ]
-        finanzkennzahlen = {}
+        # Eigenkapitalaufbau durch Tilgung
+        tilgung_pa = darlehen_rueck_jahr - zinsen_jahr
+        finanzkennzahlen = {
+            'tilgung_pa': tilgung_pa,
+            'zinsen_pa': zinsen_jahr,
+            'reine_wohnkosten_pa': nicht_umlagefaehige_j + instand_eigen_pa + co2_eigen_pa + zinsen_jahr,
+        }
 
     return {'display_table': display_table, 'finanzkennzahlen': finanzkennzahlen}
 
@@ -392,7 +403,20 @@ with st.expander("🔧 Jahresheizverbrauch (optional — für genauere CO2-Berec
 
 co2_vorschau = berechne_co2_vermieter(heizungstyp, energieeffizienz, wohnflaeche_qm,
                                        jahresverbrauch_kwh if jahresverbrauch_kwh > 0 else None)
-if co2_vorschau['vermieter_anteil'] == 0:
+if nutzungsart == "Eigennutzung":
+    co2_gesamt = berechne_co2_vermieter(heizungstyp, energieeffizienz, wohnflaeche_qm,
+                                         jahresverbrauch_kwh if jahresverbrauch_kwh > 0 else None)
+    co2_kosten_eigen = (ENERGIEKLASSE_VERBRAUCH.get(energieeffizienz, 100) * wohnflaeche_qm *
+                        HEIZUNG_CO2_FAKTOR.get(heizungstyp, 0) / 1000 * CO2_KOST_AUFG_PREIS) if not (jahresverbrauch_kwh and jahresverbrauch_kwh > 0) else (jahresverbrauch_kwh * HEIZUNG_CO2_FAKTOR.get(heizungstyp, 0) / 1000 * CO2_KOST_AUFG_PREIS)
+    if HEIZUNG_CO2_FAKTOR.get(heizungstyp, 0) == 0:
+        st.success(f"✅ **{heizungstyp}** — keine CO2-Kosten (~{de(co2_vorschau['co2_qm'], 1)} kg CO2/m²/a).")
+    else:
+        st.warning(
+            f"⚠️ **CO2-Kosten (Eigennutzer trägt 100%):** "
+            f"~{de(co2_vorschau['co2_qm'], 1)} kg CO2/m²/a | "
+            f"Geschätzte Kosten: **~{de(co2_kosten_eigen, 0)} €/Jahr** — fließt in die Kostenrechnung ein."
+        )
+elif co2_vorschau['vermieter_anteil'] == 0:
     st.success(
         f"✅ **{heizungstyp}** — kein CO2-Steueranteil für den Vermieter "
         f"(~{de(co2_vorschau['co2_qm'], 1)} kg CO2/m²/a → 0%)."
@@ -437,19 +461,28 @@ invest_bedarf = st.number_input("Zusätzl. Investitionsbedarf (€)", min_value=
                     help="Geplante Renovierungen. Erhöht Darlehenssumme, kann als Werbungskosten absetzbar sein.")
 eigenkapital  = st.number_input("Eigenkapital (€)", min_value=0, max_value=10000000, value=80000, step=1000,
                     help="Faustregel: Mind. die Kaufnebenkosten (~10%) sollten aus Eigenkapital stammen.")
+if nutzungsart == "Eigennutzung" and eigenkapital == 0:
+    st.error("⚠️ **Kein Eigenkapital:** Bei einer 100%-Finanzierung werden auch die Kaufnebenkosten kreditfinanziert. Das ist ungewöhnlich risikoreich — Banken verlangen i.d.R. mind. 10–20% EK.")
+elif nutzungsart == "Eigennutzung":
+    nk_check = (kaufpreis + garage) * (3.5 + 1.5 + 0.5 + 3.57) / 100
+    if eigenkapital < nk_check:
+        st.warning(f"⚠️ Eigenkapital ({de(eigenkapital, 0)} €) deckt kaum die geschätzten Kaufnebenkosten (~{de(nk_check, 0)} €). Mindestens die Nebenkosten sollten aus eigenen Mitteln stammen.")
 
-st.info("💡 **AfA-Basis:** Nur das Gebäude ist abschreibbar — nicht Grund & Boden (§ 7 Abs. 4 EStG). "
-        "In Nürnberg (gute Lagen) beträgt der Bodenanteil oft 30–50%. "
-        "Bodenrichtwert: [boris.bayern.de](https://www.boris.bayern.de)")
-gebaeude_anteil = st.slider(
-    "Gebäudeanteil am Kaufpreis (%) — AfA-Basis",
-    min_value=40, max_value=95, value=80, step=5,
-    help="100% minus dieser Wert = Bodenanteil (nicht abschreibbar). Je niedriger, desto geringer die jährliche AfA."
-)
-st.caption(
-    f"→ AfA-Basis: **{de(kaufpreis * gebaeude_anteil / 100, 0)} €** "
-    f"| Bodenanteil (nicht absetzbar): **{de(kaufpreis * (100 - gebaeude_anteil) / 100, 0)} €**"
-)
+if nutzungsart == "Vermietung":
+    st.info("💡 **AfA-Basis:** Nur das Gebäude ist abschreibbar — nicht Grund & Boden (§ 7 Abs. 4 EStG). "
+            "In Nürnberg (gute Lagen) beträgt der Bodenanteil oft 30–50%. "
+            "Bodenrichtwert: [boris.bayern.de](https://www.boris.bayern.de)")
+    gebaeude_anteil = st.slider(
+        "Gebäudeanteil am Kaufpreis (%) — AfA-Basis",
+        min_value=40, max_value=95, value=80, step=5,
+        help="100% minus dieser Wert = Bodenanteil (nicht abschreibbar). Je niedriger, desto geringer die jährliche AfA."
+    )
+    st.caption(
+        f"→ AfA-Basis: **{de(kaufpreis * gebaeude_anteil / 100, 0)} €** "
+        f"| Bodenanteil (nicht absetzbar): **{de(kaufpreis * (100 - gebaeude_anteil) / 100, 0)} €**"
+    )
+else:
+    gebaeude_anteil = 80  # Standardwert, für Eigennutzung nicht relevant
 
 st.subheader("Kaufnebenkosten (%)")
 with st.expander("ℹ️ Was sind Kaufnebenkosten?", expanded=False):
@@ -527,6 +560,18 @@ st.markdown(f"""
 - Laufzeit (Annuität): **{d1['laufzeit_jahre']:.1f} Jahre**
 - Tilgungssatz: **{d1['tilgung_p_ergebnis']:.2f} %**
 """)
+if nutzungsart == "Eigennutzung":
+    zinsbindung = st.number_input("Zinsbindung (Jahre)", min_value=5, max_value=30, value=10, step=5,
+                    help="Nach Ablauf der Zinsbindung muss das Darlehen zu dann geltenden Zinsen weitergeführt oder umgeschuldet werden. Üblich: 10–15 Jahre.")
+    sondertilgung_p = st.number_input("Sondertilgungsrecht (% p.a.)", min_value=0.0, max_value=20.0, value=5.0, step=1.0,
+                    help="Die meisten Kreditverträge erlauben 5–10% der Darlehenssumme p.a. als Sondertilgung. Erhöht Ihre Flexibilität erheblich.")
+    st.caption(
+        f"💡 Sondertilgungspotenzial: bis zu **{de(darlehen1_summe * sondertilgung_p / 100, 0)} €/Jahr** tilgbar ohne Vorfälligkeitsentschädigung. "
+        f"Zinsbindung endet nach **{zinsbindung} Jahren** — dann Anschlussfinanzierung nötig."
+    )
+else:
+    zinsbindung = 10
+    sondertilgung_p = 5.0
 st.caption("ℹ️ Laufzeit ≠ Zinsbindung. Nach Ablauf der Zinsbindung muss zu dann geltenden Konditionen neu finanziert werden.")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -571,13 +616,35 @@ if nutzungsart == "Vermietung":
             f"| Priv. Instandhaltung p.a.: **{de(instand_pa, 0)} €**"
         )
 else:
-    kaltmiete_monatlich, umlagefaehige_monat, mietausfallwagnis_p, instandhaltung_qm = 0, 0, 0.0, 0.0
-    nicht_umlagefaehige_pa = st.number_input("Laufende Kosten p.a. (Hausgeld etc.)",
-                                min_value=0, max_value=10000, value=960, step=10,
-                                help="Hausgeld × 12. Enthält WEG-Verwaltung, Instandhaltungsrücklage, ggf. Grundsteuer.")
+    kaltmiete_monatlich, umlagefaehige_monat, mietausfallwagnis_p = 0, 0, 0.0
+    nicht_umlagefaehige_pa = st.number_input("Hausgeld p.a. (€)",
+                                min_value=0, max_value=50000, value=2400, step=120,
+                                help="Hausgeld × 12. Enthält WEG-Verwaltung, Betriebskosten, ggf. Grundsteuer. Typisch: 2,50–4,00 €/m²/Monat.")
+    hausgeld_qm = nicht_umlagefaehige_pa / wohnflaeche_qm / 12 if wohnflaeche_qm > 0 else 0
+    if hausgeld_qm < 2.0 and nicht_umlagefaehige_pa > 0:
+        st.warning(f"⚠️ Das eingegebene Hausgeld entspricht nur {de(hausgeld_qm, 2)} €/m²/Monat — sehr niedrig. Realistisch sind 2,50–4,00 €/m²/Monat (bei {wohnflaeche_qm} m² ca. {de(wohnflaeche_qm * 2.5 * 12, 0)}–{de(wohnflaeche_qm * 4.0 * 12, 0)} €/Jahr).")
+    elif hausgeld_qm > 5.0:
+        st.info(f"ℹ️ Hausgeld von {de(hausgeld_qm, 2)} €/m²/Monat ist überdurchschnittlich hoch — prüfen Sie, ob eine Sonderumlage enthalten ist.")
 
-steuersatz = st.number_input("Persönl. Grenzsteuersatz (%)", min_value=0.0, max_value=100.0, value=42.0, step=0.5,
-                  help="Verwenden Sie Ihren Grenzsteuersatz (nicht Durchschnitt). Bei ~60.000 € Einkommen: ca. 42%.")
+    st.subheader("Private Instandhaltungsrücklage (Sondereigentum)")
+    st.caption("Für wohnungsinterne Instandhaltung (Bad, Böden, Türen etc.) — zusätzlich zur WEG-Rücklage im Hausgeld.")
+    instandhaltung_qm = st.slider("Private Instandhaltungsrücklage (€/m²/Monat)",
+                        min_value=0.0, max_value=2.0, value=0.75, step=0.25,
+                        help="Empfehlung: 0,50–1,00 €/m² bei älteren Objekten eher 1,00–1,50 €/m².")
+    instand_eigen_pa = wohnflaeche_qm * instandhaltung_qm * 12
+    st.caption(f"→ Private Instandhaltungsrücklage p.a.: **{de(instand_eigen_pa, 0)} €** ({de(instand_eigen_pa/12, 0)} €/Monat)")
+
+    co2_eigen_pa_calc = (ENERGIEKLASSE_VERBRAUCH.get(energieeffizienz, 100) * wohnflaeche_qm *
+                         HEIZUNG_CO2_FAKTOR.get(heizungstyp, 0) / 1000 * CO2_KOST_AUFG_PREIS)
+    if jahresverbrauch_kwh and jahresverbrauch_kwh > 0:
+        co2_eigen_pa_calc = jahresverbrauch_kwh * HEIZUNG_CO2_FAKTOR.get(heizungstyp, 0) / 1000 * CO2_KOST_AUFG_PREIS
+
+if nutzungsart == "Vermietung":
+    steuersatz = st.number_input("Persönl. Grenzsteuersatz (%)", min_value=0.0, max_value=100.0, value=42.0, step=0.5,
+                      help="Verwenden Sie Ihren Grenzsteuersatz (nicht Durchschnitt). Bei ~60.000 € Einkommen: ca. 42%.")
+else:
+    steuersatz = 0.0
+    st.info("ℹ️ **Steuerlicher Hinweis (Eigennutzung):** Bei selbstgenutztem Wohneigentum gibt es keine AfA oder steuerliche Absetzbarkeit von Zinskosten. Eine Ausnahme wäre ein häusliches Arbeitszimmer (anteilig, strenge Voraussetzungen) oder eine spätere Teilsanierung zur Vermietung.")
 with st.expander("ℹ️ Welchen Steuersatz soll ich eintragen?", expanded=False):
     st.markdown("""
     | Zu verst. Jahreseinkommen | Grenzsteuersatz (ca.) |
@@ -650,7 +717,11 @@ inputs = {
     'laufzeit1_jahre':   laufzeit1 if tilgung1_modus.startswith("Laufzeit")        else None,
     'kaltmiete_monatlich': kaltmiete_monatlich, 'umlagefaehige_kosten_monatlich': umlagefaehige_monat,
     'nicht_umlagefaehige_kosten_pa': nicht_umlagefaehige_pa,
-    'mietausfallwagnis_prozent': mietausfallwagnis_p, 'instandhaltung_euro_qm': instandhaltung_qm,
+    'instand_eigen_pa': instand_eigen_pa if nutzungsart == "Eigennutzung" else 0,
+    'co2_eigen_pa': co2_eigen_pa_calc if nutzungsart == "Eigennutzung" else 0,
+    'zinsbindung': zinsbindung if nutzungsart == "Eigennutzung" else 10,
+    'sondertilgung_p': sondertilgung_p if nutzungsart == "Eigennutzung" else 5.0,
+    'mietausfallwagnis_prozent': mietausfallwagnis_p, 'instandhaltung_euro_qm': instandhaltung_qm if nutzungsart == 'Vermietung' else 0,
     'steuersatz': steuersatz, 'verfuegbares_einkommen_mtl': verfuegbares_einkommen,
     'checklist_status': st.session_state['checklist_status']
 }
@@ -716,9 +787,10 @@ if results:
         ]
     else:
         all_keys = [
-            "Laufende Kosten p.a.", "Rückzahlung Darlehen p.a.", "- Zinsen p.a.",
-            "Jährliche Gesamtkosten", "Ihr monatl. Einkommen (vorher)",
-            "- Mtl. Kosten Immobilie", "= Neues verfügbares Einkommen"
+            "Hausgeld / Betriebskosten p.a.", "- Private Instandhaltungsrücklage p.a.",
+            "- CO2-Kosten (Eigennutzer) p.a.", "Rückzahlung Darlehen p.a.", "- Zinsen p.a.",
+            "- Tilgung p.a. (Vermögensaufbau)", "Jährliche Gesamtkosten (inkl. Tilgung)",
+            "Ihr monatl. Einkommen (vorher)", "- Mtl. Kosten Immobilie", "= Neues verfügbares Einkommen"
         ]
 
     col1, col2 = st.columns(2)
@@ -738,8 +810,77 @@ if results:
                         unsafe_allow_html=True
                     )
 
+    # --- Eigennutzung: Zusatzinfos ---
+    if nutzungsart == "Eigennutzung" and results.get('finanzkennzahlen'):
+        fk = results['finanzkennzahlen']
+        tilgung_pa = fk.get('tilgung_pa', 0)
+        zinsen_pa  = fk.get('zinsen_pa', 0)
+        reine_wk   = fk.get('reine_wohnkosten_pa', 0)
+
+        st.subheader("🏦 Vermögensaufbau durch Tilgung")
+        st.info(
+            f"💡 Von Ihrer monatlichen Rate von **{de(d1['monatsrate'], 0)} €** sind im 1. Jahr:
+"
+            f"- **{de(zinsen_pa/12, 0)} €/Monat** Zinsen (= Kosten, nicht rückgewinnbar)
+"
+            f"- **{de(tilgung_pa/12, 0)} €/Monat** Tilgung (= Vermögensaufbau / Eigenkapitalzuwachs)
+
+"
+            f"Reine 'Wohnkosten' ohne Tilgung (Zins + Betrieb + Instandh. + CO2): **{de(reine_wk/12, 0)} €/Monat**"
+        )
+
+        laufzeit_j = d1['laufzeit_jahre']
+        ek_nach_10j = eigenkapital + tilgung_pa * 10
+        st.caption(f"📈 Geschätztes Eigenkapital nach 10 Jahren (nur Tilgung, ohne Wertsteigerung): **{de(ek_nach_10j, 0)} €**")
+
+        st.subheader("⚖️ Kaufen vs. Mieten+Investieren (Opportunity Cost)")
+        with st.expander("ℹ️ Was ist der Opportunity-Cost-Vergleich?", expanded=True):
+            st.markdown("""
+            Der wichtigste Vergleich bei Eigennutzung: Was wäre, wenn Sie **weiter mieten** und die
+            Differenz (Eigenkapital + monatliche Mehrkosten) am Kapitalmarkt anlegen würden?
+
+            **Annahmen für den Vergleich:**
+            - Kapitalmarktrendite (ETF): 6% p.a. (historischer Ø MSCI World nach Inflation ~5–7%)
+            - Immobilienwertentwicklung: 2% p.a. (konservativ für Nürnberg)
+            """)
+
+        vergleichsmiete = st.number_input("Vergleichsmiete (€/mtl. Kaltmiete für gleichwertige Wohnung)",
+                            min_value=0, max_value=5000, value=int(wohnflaeche_qm * 12),
+                            step=50, key="vergleichsmiete",
+                            help="Was würden Sie für eine gleichwertige Mietwohnung zahlen? Basis für den Opportunitätskostenvergleich.")
+
+        etf_rendite = 0.06
+        immo_wertzuwachs = 0.02
+        jahre = 20
+
+        monatliche_immo_kosten = jaehrliche_kosten_display = (
+            results['finanzkennzahlen'].get('reine_wohnkosten_pa', 0) + (d1['monatsrate'] * 12)
+        ) / 12
+        monatliche_immo_kosten = next(
+            (r['val2'] for r in results['display_table'] if '- Mtl. Kosten Immobilie' in r['kennzahl']), 0
+        )
+        monatliche_immo_kosten = abs(float(monatliche_immo_kosten)) if monatliche_immo_kosten else d1['monatsrate']
+
+        mtl_differenz = monatliche_immo_kosten - vergleichsmiete
+
+        # Szenario Kaufen: Immobilienwert nach X Jahren
+        immo_wert_20j = kaufpreis * (1 + immo_wertzuwachs) ** jahre
+        restschuld_20j = darlehen1_summe * ((1 + zins1/100/12)**(jahre*12) - 1) / ((1 + zins1/100/12)**(d1['laufzeit_jahre']*12) - 1) if d1['laufzeit_jahre'] > 0 else 0
+        nettoverm_kaufen = immo_wert_20j - max(restschuld_20j, 0)
+
+        # Szenario Mieten: EK + mtl. Differenz in ETF
+        etf_monatlich = max(mtl_differenz, 0)
+        etf_wert_20j  = eigenkapital * (1 + etf_rendite)**jahre + etf_monatlich * 12 * (((1+etf_rendite)**jahre - 1) / etf_rendite) if etf_rendite > 0 else eigenkapital + etf_monatlich * 12 * jahre
+
+        col_k, col_m = st.columns(2)
+        col_k.metric("🏠 Kaufen — Nettovermögen nach 20 J.", f"{de(nettoverm_kaufen, 0)} €",
+                     delta=f"Immo-Wert: {de(immo_wert_20j, 0)} € − Restschuld: {de(max(restschuld_20j,0), 0)} €")
+        col_m.metric("📈 Mieten+ETF — Depotwert nach 20 J.", f"{de(etf_wert_20j, 0)} €",
+                     delta=f"EK ({de(eigenkapital, 0)} €) + {de(etf_monatlich, 0)} €/Monat @ 6% p.a." if mtl_differenz >= 0 else "Kauf ist günstiger als Miete — Mieter hat weniger übrig")
+        st.caption("⚠️ Vereinfachte Modellrechnung ohne Steuern, Inflationsanpassung, Mietsteigerungen oder Sonderumlagen. Dient nur zur Orientierung.")
+
     # --- Renditekennzahlen ---
-    if results.get('finanzkennzahlen'):
+    if nutzungsart == "Vermietung" and results.get('finanzkennzahlen'):
         st.subheader("📈 Finanzkennzahlen & Einordnung")
         with st.expander("ℹ️ Was bedeuten diese Kennzahlen?", expanded=False):
             st.markdown("""
